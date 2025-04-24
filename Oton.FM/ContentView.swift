@@ -17,6 +17,7 @@ class RadioPlayer: NSObject, ObservableObject {
     @Published var isPlaying = false
     @Published var currentTrackTitle: String = ""
     @Published var artworkImage: UIImage
+    @Published var artworkId: UUID = UUID() // Добавляем ID для отслеживания изменений
     @Published var isConnecting: Bool = false
     private var hasLoadedArtworkOnce = false
 
@@ -46,36 +47,79 @@ class RadioPlayer: NSObject, ObservableObject {
         let statusURL = URL(string: "https://public.radio.co/stations/s696f24a77/status")!
         var request = URLRequest(url: statusURL)
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        let task = URLSession.shared.dataTask(with: request) { data, _, _ in
-            guard let data = data else { return }
-            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                print("🧩 JSON ответ: \(json)")
-            }
+        
+        // Создаем новую сессию без кэширования для обновления данных
+        let config = URLSessionConfiguration.default
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        config.urlCache = nil
+        let session = URLSession(configuration: config)
+        
+        let task = session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self, let data = data else { return }
+            
+            print("🧩 Получены новые данные о треке")
+            
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let current = json["current_track"] as? [String: Any],
                   let artworkURLString = current["artwork_url_large"] as? String else { return }
 
             print("🎨 Получен artwork URL: \(artworkURLString)")
-
-            let cacheBustingURLString = artworkURLString + "?t=\(Date().timeIntervalSince1970)"
-            let imageURL = URL(string: cacheBustingURLString)
-
-            URLSession.shared.dataTask(with: imageURL!) { imageData, _, _ in
-                print("📷 Загрузка изображения по URL: \(imageURL!)")
-                if let imageData = imageData, let image = UIImage(data: imageData) {
+            
+            // Принудительно добавляем timestamp к URL для избежания кэширования
+            let timestamp = Date().timeIntervalSince1970
+            let cacheBustingURLString = "\(artworkURLString)?nocache=\(timestamp)"
+            guard let imageURL = URL(string: cacheBustingURLString) else { return }
+            
+            print("🔄 Запрос изображения: \(cacheBustingURLString)")
+            
+            // Новый запрос для изображения без кэширования
+            var imageRequest = URLRequest(url: imageURL)
+            imageRequest.cachePolicy = .reloadIgnoringLocalCacheData
+            imageRequest.addValue("no-cache", forHTTPHeaderField: "Cache-Control")
+            
+            session.dataTask(with: imageRequest) { imageData, imageResponse, imageError in
+                print("📷 Получен ответ на запрос изображения")
+                
+                if let error = imageError {
+                    print("❌ Ошибка загрузки изображения: \(error.localizedDescription)")
+                    return
+                }
+                
+                guard let imageData = imageData, !imageData.isEmpty else {
+                    print("⚠️ Нет данных изображения")
+                    return
+                }
+                
+                if let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
-                        if artworkURLString.contains("station_logos/s696f24a77.20250411103941.jpg") {
+                        print("📊 Детальный анализ URL обложки: \(artworkURLString)")
+                let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains("s696f24a77") || artworkURLString.lowercased().contains("oton")
+                print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
+                
+                if isStationLogo {
+                            // Если это логотип станции, используем дефолтное изображение
+                            print("⚠️ Обнаружен логотип станции вместо обложки трека: \(artworkURLString)")
                             let imageToUse = self.defaultArtwork ?? image
                             self.artworkImage = imageToUse
-
+                            
                             let artwork = MPMediaItemArtwork(boundsSize: imageToUse.size) { _ in imageToUse }
                             MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                        } else if self.artworkImage != image {
-                            self.artworkImage = image
+                            print("🎵 Установлено дефолтное изображение")
+                        } else {
+                            // Если это обложка трека, используем её
+                            print("✅ Обнаружена настоящая обложка трека: \(artworkURLString)")
+                            // Генерируем новый UUID, чтобы гарантировать обновление UI
+                            let newImage = image.copy() as? UIImage ?? image
+                            self.artworkImage = newImage
+                            // Генерируем новый UUID для обновления анимаций в интерфейсе
+                            self.artworkId = UUID()
+                            print("🆔 Новый ID обложки: \(self.artworkId)")
+                            
+                            let artwork = MPMediaItemArtwork(boundsSize: newImage.size) { _ in newImage }
+                            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
+                            print("🎵 Обновлено изображение трека из URL: \(artworkURLString)")
                         }
                         self.hasLoadedArtworkOnce = true
-                        let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
                     }
                 }
             }.resume()
@@ -122,14 +166,28 @@ class RadioPlayer: NSObject, ObservableObject {
            let metadataItems = player?.currentItem?.timedMetadata {
             for item in metadataItems {
                 if let value = item.value as? String {
+                    print("📌 Новый трек: \(value)")
                     DispatchQueue.main.async {
+                        // Сохраняем предыдущий трек для сравнения
+                        let previousTrack = self.currentTrackTitle
+                        let isNewTrack = previousTrack != value
+                        
                         self.currentTrackTitle = value
                         self.isConnecting = false
                         self.isPlaying = true
                         MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] = value
-
-                        // Загружаем обложку при каждом новом треке
-                        self.fetchArtworkFromStatusAPI()
+                        
+                        // Загружаем обложку только если это действительно новый трек
+                        if isNewTrack {
+                            print("🆕 Обнаружен новый трек: \(value), предыдущий: \(previousTrack)")
+                            
+                            // Запрашиваем обложку напрямую без плейсхолдера,
+                            // так как смена обложек создает мерцание
+                            print("🔄 Запрашиваем обложку для трека: \(value)")
+                            self.fetchArtworkFromStatusAPI()
+                        } else {
+                            print("ℹ️ Повторное уведомление о том же треке: \(value)")
+                        }
                     }
                 }
             }
@@ -166,15 +224,16 @@ struct ContentView: View {
     @StateObject private var player = RadioPlayer.shared
     @State private var isInterfaceVisible = false
     @State private var isPressed = false
+    
     var body: some View {
         ZStack {
             Image(uiImage: player.artworkImage)
                 .resizable()
                 .scaledToFill()
                 .blur(radius: 50)
-                .opacity(player.artworkImage == nil ? 0.4 : 0.4)
+                .opacity(0.4)
                 .ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.5), value: UUID())
+                .animation(.easeInOut(duration: 0.5), value: player.artworkId)
 
             if isInterfaceVisible {
                 VStack(spacing: 20) {
@@ -191,7 +250,7 @@ struct ContentView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                         .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.5), radius: 20, x: 0, y: 10)
                         .opacity(1.0)
-                        .animation(.easeInOut(duration: 0.5), value: UUID())
+                        .animation(.easeInOut(duration: 0.5), value: player.artworkId)
 
                     Group {
                         if player.isConnecting {
@@ -300,6 +359,7 @@ extension UIColor {
         return white > 0.7
     }
 }
+
 
 /*
 struct AnimatedBackground: View {
