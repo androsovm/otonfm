@@ -21,6 +21,10 @@ class RadioPlayer: NSObject, ObservableObject {
     @Published var artworkId: UUID = UUID() // Добавляем ID для отслеживания изменений
     @Published var isConnecting: Bool = false
     private var hasLoadedArtworkOnce = false
+    private var artworkLoadingTask: URLSessionDataTask?
+    private var lastTrackTitle: String = ""
+    private var retryCount = 0
+    private let maxRetries = 3
 
     private override init() {
         // Создаем копию дефолтного изображения и добавляем обработку чтобы правильно отображались углы
@@ -66,28 +70,50 @@ class RadioPlayer: NSObject, ObservableObject {
         let statusURL = URL(string: "https://public.radio.co/stations/s696f24a77/status")!
         var request = URLRequest(url: statusURL)
         request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 15 // Увеличиваем таймаут до 10 секунд
         
         // Создаем новую сессию без кэширования для обновления данных
         let config = URLSessionConfiguration.default
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.urlCache = nil
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 10
         let session = URLSession(configuration: config)
         
-        let task = session.dataTask(with: request) { [weak self] data, response, error in
-            guard let self = self, let data = data else { return }
+        // Отменяем предыдущую задачу, если она есть
+        artworkLoadingTask?.cancel()
+        
+        artworkLoadingTask = session.dataTask(with: request) { [weak self] data, response, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("❌ Ошибка получения статуса: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let data = data else {
+                print("⚠️ Нет данных статуса")
+                return
+            }
             
             print("🧩 Получены новые данные о треке")
             
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let current = json["current_track"] as? [String: Any],
-                  let artworkURLString = current["artwork_url_large"] as? String else { return }
+                  let artworkURLString = current["artwork_url_large"] as? String else {
+                print("⚠️ Не удалось получить URL обложки")
+                return
+            }
 
             print("🎨 Получен artwork URL: \(artworkURLString)")
             
             // Принудительно добавляем timestamp к URL для избежания кэширования
             let timestamp = Date().timeIntervalSince1970
             let cacheBustingURLString = "\(artworkURLString)?nocache=\(timestamp)"
-            guard let imageURL = URL(string: cacheBustingURLString) else { return }
+            guard let imageURL = URL(string: cacheBustingURLString) else {
+                print("⚠️ Неверный URL обложки")
+                return
+            }
             
             print("🔄 Запрос изображения: \(cacheBustingURLString)")
             
@@ -95,12 +121,28 @@ class RadioPlayer: NSObject, ObservableObject {
             var imageRequest = URLRequest(url: imageURL)
             imageRequest.cachePolicy = .reloadIgnoringLocalCacheData
             imageRequest.addValue("no-cache", forHTTPHeaderField: "Cache-Control")
+            imageRequest.timeoutInterval = 10
             
-            session.dataTask(with: imageRequest) { imageData, imageResponse, imageError in
+            let imageTask = session.dataTask(with: imageRequest) { [weak self] imageData, imageResponse, imageError in
+                guard let self = self else { return }
+                
                 print("📷 Получен ответ на запрос изображения")
                 
                 if let error = imageError {
                     print("❌ Ошибка загрузки изображения: \(error.localizedDescription)")
+                    
+                    if self.retryCount < self.maxRetries {
+                        self.retryCount += 1
+                        print("🔄 Повторная попытка загрузки (\(self.retryCount)/\(self.maxRetries))")
+                        
+                        let delay = Double(self.retryCount) * 2.0
+                        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                            self.fetchArtworkFromStatusAPI()
+                        }
+                    } else {
+                        print("⚠️ Превышено максимальное количество попыток загрузки")
+                        self.retryCount = 0
+                    }
                     return
                 }
                 
@@ -112,67 +154,58 @@ class RadioPlayer: NSObject, ObservableObject {
                 if let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         print("📊 Детальный анализ URL обложки: \(artworkURLString)")
-                let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains("s696f24a77") || artworkURLString.lowercased().contains("oton")
-                print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
-                
-                if isStationLogo {
-                            // Если это логотип станции, используем дефолтное изображение
-                            print("⚠️ Обнаружен логотип станции вместо обложки трека: \(artworkURLString)")
-                            
-                            // Создаем копию изображения с закругленными углами
-                            // при работе с дефолтным изображением
-                            if let defaultImg = self.defaultArtwork {
-                                // Создаем изображение с закругленными углами
-                                let renderer = UIGraphicsImageRenderer(size: defaultImg.size)
-                                let roundedImage = renderer.image { context in
-                                    let rect = CGRect(origin: .zero, size: defaultImg.size)
-                                    let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062)
-                                    path.addClip()
-                                    defaultImg.draw(in: rect)
-                                }
-                                self.artworkImage = roundedImage
-                                self.artworkId = UUID() // Обновляем ID для корректного обновления UI
-                                
-                                let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
-                                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                                print("🎵 Установлено дефолтное изображение с закругленными углами")
-                            } else {
-                                // Запасной вариант, если defaultArtwork не найден
-                                self.artworkImage = image
-                                self.artworkId = UUID()
-                                
-                                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
-                                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                                print("🎵 Установлено изображение из лого станции")
-                            }
-                        } else {
-                            // Если это обложка трека, используем её с закругленными углами
-                            print("✅ Обнаружена настоящая обложка трека: \(artworkURLString)")
-                            
-                            // Создаем копию изображения с закругленными углами
-                            let renderer = UIGraphicsImageRenderer(size: image.size)
-                            let roundedImage = renderer.image { context in
-                                let rect = CGRect(origin: .zero, size: image.size)
-                                let path = UIBezierPath(roundedRect: rect, cornerRadius: image.size.width * 0.062)
-                                path.addClip()
-                                image.draw(in: rect)
-                            }
-                            
-                            self.artworkImage = roundedImage
-                            // Генерируем новый UUID для обновления анимаций в интерфейсе
-                            self.artworkId = UUID()
-                            print("🆔 Новый ID обложки: \(self.artworkId)")
-                            
-                            let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
-                            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                            print("🎵 Обновлено изображение трека с закругленными углами из URL: \(artworkURLString)")
-                        }
-                        self.hasLoadedArtworkOnce = true
+                        let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains("s696f24a77") || artworkURLString.lowercased().contains("oton")
+                        print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
+                        
+                        // Обновляем обложку в любом случае
+                        self.setTrackArtwork(image)
+                        self.retryCount = 0
                     }
                 }
-            }.resume()
+            }
+            imageTask.resume()
         }
-        task.resume()
+        artworkLoadingTask?.resume()
+    }
+
+    private func setDefaultArtwork() {
+        DispatchQueue.main.async {
+            if let defaultImg = self.defaultArtwork {
+                let renderer = UIGraphicsImageRenderer(size: defaultImg.size)
+                let roundedImage = renderer.image { context in
+                    let rect = CGRect(origin: .zero, size: defaultImg.size)
+                    let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062)
+                    path.addClip()
+                    defaultImg.draw(in: rect)
+                }
+                self.artworkImage = roundedImage
+                self.artworkId = UUID()
+                
+                let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
+                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
+                print("🎵 Установлено дефолтное изображение")
+            }
+        }
+    }
+    
+    private func setTrackArtwork(_ image: UIImage) {
+        DispatchQueue.main.async {
+            let renderer = UIGraphicsImageRenderer(size: image.size)
+            let roundedImage = renderer.image { context in
+                let rect = CGRect(origin: .zero, size: image.size)
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: image.size.width * 0.062)
+                path.addClip()
+                image.draw(in: rect)
+            }
+            
+            self.artworkImage = roundedImage
+            self.artworkId = UUID()
+            print("🆔 Новый ID обложки: \(self.artworkId)")
+            
+            let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
+            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
+            print("🎵 Обновлено изображение трека")
+        }
     }
 
     func pause() {
@@ -229,8 +262,10 @@ class RadioPlayer: NSObject, ObservableObject {
                         if isNewTrack {
                             print("🆕 Обнаружен новый трек: \(value), предыдущий: \(previousTrack)")
                             
-                            // Запрашиваем обложку напрямую без плейсхолдера,
-                            // так как смена обложек создает мерцание
+                            // Отменяем предыдущую задачу загрузки, если она есть
+                            self.artworkLoadingTask?.cancel()
+                            
+                            // Запрашиваем новую обложку
                             print("🔄 Запрашиваем обложку для трека: \(value)")
                             self.fetchArtworkFromStatusAPI()
                         } else {
@@ -272,7 +307,7 @@ struct ContentView: View {
     @StateObject private var player = RadioPlayer.shared
     @State private var isInterfaceVisible = false
     @State private var isPressed = false
-    @State private var pulsateAnimation = false // Для управления пульсацией обложки
+    @State private var pulsateAnimation = false
     @State private var hapticEngine: CHHapticEngine?
     
     var body: some View {
@@ -299,10 +334,10 @@ struct ContentView: View {
                         .frame(width: 260, height: 260)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.5), radius: 20, x: 0, y: 10)
-                    .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
-                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
-                    .opacity(1.0)
-                    .animation(.easeInOut(duration: 0.5), value: player.artworkId)
+                        .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
+                        .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
+                        .opacity(1.0)
+                        .animation(.easeInOut(duration: 0.5), value: player.artworkId)
 
                     Group {
                         if player.isConnecting {
@@ -314,9 +349,9 @@ struct ContentView: View {
                                 .id(player.currentTrackTitle)
                                 .font(.headline)
                                 .foregroundColor(player.artworkImage.averageColor?.isLightColor == true ? .black : .white)
-                                .lineLimit(2) // Разрешаем 2 строки
+                                .lineLimit(2)
                                 .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true) // Ключевой модификатор для работы lineLimit
+                                .fixedSize(horizontal: false, vertical: true)
                                 .frame(maxWidth: .infinity)
                                 .frame(minHeight: 50)
                                 .padding(.horizontal)
@@ -325,9 +360,7 @@ struct ContentView: View {
                         }
                     }
 
-
                     Button(action: {
-                        // Воспроизводим тактильный отклик
                         playComplexHaptic()
                         
                         if player.isPlaying {
@@ -335,10 +368,16 @@ struct ContentView: View {
                         } else {
                             player.playStream()
                         }
-                        // Активируем пульсацию при запуске воспроизведения
                         pulsateAnimation = player.isPlaying
                     }) {
                         ZStack {
+                            Circle()
+                                .fill(Color(player.artworkImage.averageColor ?? .white).opacity(0.5))
+                                .blur(radius: 20)
+                                .frame(width: 120, height: 120)
+                                .scaleEffect(player.isPlaying ? 1.3 : 1.0)
+                                .animation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true), value: player.isPlaying)
+                            
                             Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
                                 .resizable()
                                 .symbolRenderingMode(.palette)
@@ -371,15 +410,12 @@ struct ContentView: View {
             withAnimation {
                 isInterfaceVisible = true
             }
-            // Активируем пульсацию если воспроизведение уже идет
             pulsateAnimation = player.isPlaying
         }
         .onChange(of: player.isPlaying) { isPlaying in
-            // Синхронизируем состояние пульсации с состоянием воспроизведения
             pulsateAnimation = isPlaying
         }
         .onChange(of: player.currentTrackTitle) { _ in
-            // Воспроизводим тактильный отклик при смене трека
             playHapticFeedback(.medium)
         }
         .onAppear(perform: prepareHaptics)
@@ -429,7 +465,6 @@ struct ContentView: View {
     }
 }
 
-
 @main
 struct OtonFMApp: App {
     @State private var isSplashActive = true
@@ -477,7 +512,6 @@ extension UIColor {
         return white > 0.7
     }
 }
-
 
 /*
 struct AnimatedBackground: View {
