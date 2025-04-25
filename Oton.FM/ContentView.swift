@@ -9,11 +9,12 @@ import SwiftUI
 import AVFoundation
 import MediaPlayer
 import UIKit
+import CoreHaptics
 
 class RadioPlayer: NSObject, ObservableObject {
     static let shared = RadioPlayer()
     private var player: AVPlayer?
-    private let defaultArtwork = UIImage(named: "defaultArtwork")
+    private let defaultArtwork = UIImage(named: "defaultArtwork") // Исходное изображение заставки без обработки
     @Published var isPlaying = false
     @Published var currentTrackTitle: String = ""
     @Published var artworkImage: UIImage
@@ -22,7 +23,19 @@ class RadioPlayer: NSObject, ObservableObject {
     private var hasLoadedArtworkOnce = false
 
     private override init() {
-        self.artworkImage = UIImage(named: "defaultArtwork") ?? UIImage()
+        // Создаем копию дефолтного изображения и добавляем обработку чтобы правильно отображались углы
+        if let defaultImg = UIImage(named: "defaultArtwork") {
+            let renderer = UIGraphicsImageRenderer(size: defaultImg.size)
+            let roundedImage = renderer.image { context in
+                let rect = CGRect(origin: .zero, size: defaultImg.size)
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062) // ~16 для изображения 260x260
+                path.addClip()
+                defaultImg.draw(in: rect)
+            }
+            self.artworkImage = roundedImage
+        } else {
+            self.artworkImage = UIImage()
+        }
         super.init()
     }
 
@@ -41,6 +54,12 @@ class RadioPlayer: NSObject, ObservableObject {
         fetchArtworkFromStatusAPI()
         setupNowPlaying()
         setupRemoteCommandCenter()
+        
+        // Установка isPlaying в true до получения метаданных
+        // чтобы активировать пульсацию сразу
+        DispatchQueue.main.async {
+            self.isPlaying = true
+        }
     }
 
     private func fetchArtworkFromStatusAPI() {
@@ -99,25 +118,54 @@ class RadioPlayer: NSObject, ObservableObject {
                 if isStationLogo {
                             // Если это логотип станции, используем дефолтное изображение
                             print("⚠️ Обнаружен логотип станции вместо обложки трека: \(artworkURLString)")
-                            let imageToUse = self.defaultArtwork ?? image
-                            self.artworkImage = imageToUse
                             
-                            let artwork = MPMediaItemArtwork(boundsSize: imageToUse.size) { _ in imageToUse }
-                            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                            print("🎵 Установлено дефолтное изображение")
+                            // Создаем копию изображения с закругленными углами
+                            // при работе с дефолтным изображением
+                            if let defaultImg = self.defaultArtwork {
+                                // Создаем изображение с закругленными углами
+                                let renderer = UIGraphicsImageRenderer(size: defaultImg.size)
+                                let roundedImage = renderer.image { context in
+                                    let rect = CGRect(origin: .zero, size: defaultImg.size)
+                                    let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062)
+                                    path.addClip()
+                                    defaultImg.draw(in: rect)
+                                }
+                                self.artworkImage = roundedImage
+                                self.artworkId = UUID() // Обновляем ID для корректного обновления UI
+                                
+                                let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
+                                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
+                                print("🎵 Установлено дефолтное изображение с закругленными углами")
+                            } else {
+                                // Запасной вариант, если defaultArtwork не найден
+                                self.artworkImage = image
+                                self.artworkId = UUID()
+                                
+                                let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+                                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
+                                print("🎵 Установлено изображение из лого станции")
+                            }
                         } else {
-                            // Если это обложка трека, используем её
+                            // Если это обложка трека, используем её с закругленными углами
                             print("✅ Обнаружена настоящая обложка трека: \(artworkURLString)")
-                            // Генерируем новый UUID, чтобы гарантировать обновление UI
-                            let newImage = image.copy() as? UIImage ?? image
-                            self.artworkImage = newImage
+                            
+                            // Создаем копию изображения с закругленными углами
+                            let renderer = UIGraphicsImageRenderer(size: image.size)
+                            let roundedImage = renderer.image { context in
+                                let rect = CGRect(origin: .zero, size: image.size)
+                                let path = UIBezierPath(roundedRect: rect, cornerRadius: image.size.width * 0.062)
+                                path.addClip()
+                                image.draw(in: rect)
+                            }
+                            
+                            self.artworkImage = roundedImage
                             // Генерируем новый UUID для обновления анимаций в интерфейсе
                             self.artworkId = UUID()
                             print("🆔 Новый ID обложки: \(self.artworkId)")
                             
-                            let artwork = MPMediaItemArtwork(boundsSize: newImage.size) { _ in newImage }
+                            let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
                             MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                            print("🎵 Обновлено изображение трека из URL: \(artworkURLString)")
+                            print("🎵 Обновлено изображение трека с закругленными углами из URL: \(artworkURLString)")
                         }
                         self.hasLoadedArtworkOnce = true
                     }
@@ -224,6 +272,8 @@ struct ContentView: View {
     @StateObject private var player = RadioPlayer.shared
     @State private var isInterfaceVisible = false
     @State private var isPressed = false
+    @State private var pulsateAnimation = false // Для управления пульсацией обложки
+    @State private var hapticEngine: CHHapticEngine?
     
     var body: some View {
         ZStack {
@@ -247,25 +297,28 @@ struct ContentView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 260, height: 260)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.5), radius: 20, x: 0, y: 10)
-                        .opacity(1.0)
-                        .animation(.easeInOut(duration: 0.5), value: player.artworkId)
+                    .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
+                    .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
+                    .opacity(1.0)
+                    .animation(.easeInOut(duration: 0.5), value: player.artworkId)
 
                     Group {
                         if player.isConnecting {
                             ProgressView()
                                 .progressViewStyle(CircularProgressViewStyle(tint: player.artworkImage.averageColor?.isLightColor == true ? .black : .white))
-                                .frame(height: 40)
+                                .frame(height: 50)
                         } else {
                             Text(player.currentTrackTitle)
                                 .id(player.currentTrackTitle)
                                 .font(.headline)
                                 .foregroundColor(player.artworkImage.averageColor?.isLightColor == true ? .black : .white)
-                                .lineLimit(1)
+                                .lineLimit(2) // Разрешаем 2 строки
                                 .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true) // Ключевой модификатор для работы lineLimit
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 40)
+                                .frame(minHeight: 50)
                                 .padding(.horizontal)
                                 .transition(.opacity)
                                 .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
@@ -274,11 +327,16 @@ struct ContentView: View {
 
 
                     Button(action: {
+                        // Воспроизводим тактильный отклик
+                        playComplexHaptic()
+                        
                         if player.isPlaying {
                             player.pause()
                         } else {
                             player.playStream()
                         }
+                        // Активируем пульсацию при запуске воспроизведения
+                        pulsateAnimation = player.isPlaying
                     }) {
                         ZStack {
                             Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
@@ -294,8 +352,14 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
-                            .onChanged { _ in isPressed = true }
-                            .onEnded { _ in isPressed = false }
+                            .onChanged { _ in 
+                                isPressed = true
+                                playHapticFeedback(.light)
+                            }
+                            .onEnded { _ in 
+                                isPressed = false
+                                playHapticFeedback(.light)
+                            }
                     )
                 }
                 .padding()
@@ -307,6 +371,60 @@ struct ContentView: View {
             withAnimation {
                 isInterfaceVisible = true
             }
+            // Активируем пульсацию если воспроизведение уже идет
+            pulsateAnimation = player.isPlaying
+        }
+        .onChange(of: player.isPlaying) { isPlaying in
+            // Синхронизируем состояние пульсации с состоянием воспроизведения
+            pulsateAnimation = isPlaying
+        }
+        .onChange(of: player.currentTrackTitle) { _ in
+            // Воспроизводим тактильный отклик при смене трека
+            playHapticFeedback(.medium)
+        }
+        .onAppear(perform: prepareHaptics)
+    }
+    
+    // Подготавливаем haptic engine
+    private func prepareHaptics() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
+        
+        do {
+            hapticEngine = try CHHapticEngine()
+            try hapticEngine?.start()
+        } catch {
+            print("Ошибка при создании haptic engine: \(error.localizedDescription)")
+        }
+    }
+    
+    // Воспроизводим простой тактильный отклик
+    private func playHapticFeedback(_ style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        let generator = UIImpactFeedbackGenerator(style: style)
+        generator.impactOccurred()
+    }
+    
+    // Воспроизводим более сложный паттерн тактильного отклика
+    private func playComplexHaptic() {
+        guard CHHapticEngine.capabilitiesForHardware().supportsHaptics,
+              let engine = hapticEngine else { return }
+        
+        // Создаем интенсивность события
+        let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0)
+        let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.7)
+        
+        // Создаем события
+        let event1 = CHHapticEvent(eventType: .hapticTransient, parameters: [intensity, sharpness], relativeTime: 0)
+        let event2 = CHHapticEvent(eventType: .hapticContinuous, parameters: [
+            CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.5),
+            CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
+        ], relativeTime: 0.1, duration: 0.2)
+        
+        do {
+            let pattern = try CHHapticPattern(events: [event1, event2], parameters: [])
+            let player = try engine.makePlayer(with: pattern)
+            try player.start(atTime: 0)
+        } catch {
+            print("Не удалось воспроизвести тактильный паттерн: \(error.localizedDescription)")
         }
     }
 }

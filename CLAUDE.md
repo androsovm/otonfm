@@ -2,6 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## About Oton.FM
+Oton.FM is a radio application for the Yakut diaspora, featuring:
+- Yakut and international music
+- Programs and shows in the Yakut language
+- Cultural content for the Yakut community
+- Live streaming and on-demand content
+
 ## Build Commands
 - Build: `xcodebuild -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15' build`
 - Test: `xcodebuild test -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15'`
