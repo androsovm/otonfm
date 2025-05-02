@@ -20,11 +20,17 @@ class RadioPlayer: NSObject, ObservableObject {
     @Published var artworkImage: UIImage
     @Published var artworkId: UUID = UUID() // Добавляем ID для отслеживания изменений
     @Published var isConnecting: Bool = false
+    @Published var isBuffering: Bool = false // Новое свойство для отображения состояния буферизации
     private var hasLoadedArtworkOnce = false
     private var artworkLoadingTask: URLSessionDataTask?
     private var lastTrackTitle: String = ""
     private var retryCount = 0
     private let maxRetries = 3
+    private var bufferObservers: [NSKeyValueObservation] = []
+    private var bufferingRestartWorkItem: DispatchWorkItem? = nil
+    private var autoRestartAttempts = 0
+    private let maxAutoRestartAttempts = 3
+    private let bufferingTimeout: TimeInterval = 8.0
 
     private override init() {
         // Создаем копию дефолтного изображения и добавляем обработку чтобы правильно отображались углы
@@ -53,6 +59,34 @@ class RadioPlayer: NSObject, ObservableObject {
             print("Failed to set up audio session: \(error)")
         }
         player = AVPlayer(url: url)
+        // Настройка буфера: 20 секунд
+        player?.currentItem?.preferredForwardBufferDuration = 20
+        // Удаляем старые наблюдатели
+        bufferObservers.forEach { $0.invalidate() }
+        bufferObservers.removeAll()
+        // Добавляем KVO на буферизацию
+        if let item = player?.currentItem {
+            let obs1 = item.observe(\AVPlayerItem.isPlaybackBufferEmpty, options: [.new, .initial]) { [weak self] item, change in
+                DispatchQueue.main.async {
+                    if item.isPlaybackBufferEmpty {
+                        self?.isBuffering = true
+                        print("[Buffer] Буфер пуст, начинается буферизация...")
+                        self?.scheduleBufferingRestart()
+                    }
+                }
+            }
+            let obs2 = item.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new, .initial]) { [weak self] item, change in
+                DispatchQueue.main.async {
+                    if item.isPlaybackLikelyToKeepUp {
+                        self?.isBuffering = false
+                        print("[Buffer] Буфер наполнен, продолжаем воспроизведение.")
+                        self?.cancelBufferingRestart()
+                        self?.autoRestartAttempts = 0 // Сброс попыток при восстановлении
+                    }
+                }
+            }
+            bufferObservers.append(contentsOf: [obs1, obs2])
+        }
         player?.currentItem?.addObserver(self, forKeyPath: "timedMetadata", options: [.new, .initial], context: nil)
         player?.play()
         fetchArtworkFromStatusAPI()
@@ -211,6 +245,8 @@ class RadioPlayer: NSObject, ObservableObject {
     func pause() {
         player?.pause()
         isPlaying = false
+        isBuffering = false
+        cancelBufferingRestart()
     }
 
     private func setupNowPlaying() {
@@ -275,6 +311,36 @@ class RadioPlayer: NSObject, ObservableObject {
                 }
             }
         }
+    }
+
+    private func scheduleBufferingRestart() {
+        cancelBufferingRestart()
+        guard autoRestartAttempts < maxAutoRestartAttempts else {
+            print("[Buffer] Достигнут лимит автоматических попыток рестарта потока.")
+            return
+        }
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self = self else { return }
+            if self.isBuffering {
+                self.autoRestartAttempts += 1
+                print("[Buffer] Автоматический рестарт потока (попытка \(self.autoRestartAttempts)/\(self.maxAutoRestartAttempts))...")
+                self.player?.pause()
+                self.playStream()
+            }
+        }
+        bufferingRestartWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + bufferingTimeout, execute: workItem)
+    }
+
+    private func cancelBufferingRestart() {
+        bufferingRestartWorkItem?.cancel()
+        bufferingRestartWorkItem = nil
+    }
+
+    deinit {
+        bufferObservers.forEach { $0.invalidate() }
+        bufferObservers.removeAll()
+        cancelBufferingRestart()
     }
 }
 
@@ -513,56 +579,4 @@ extension UIColor {
     }
 }
 
-/*
-struct AnimatedBackground: View {
-    @State private var waveOffset: Angle = .degrees(0)
 
-    var body: some View {
-        GeometryReader { geo in
-            WaveShape(offset: waveOffset)
-                .fill(
-                    LinearGradient(gradient: Gradient(colors: [.blue.opacity(0.3), .purple.opacity(0.3)]),
-                                   startPoint: .topLeading,
-                                   endPoint: .bottomTrailing)
-                )
-                .opacity(0.5)
-                .animation(.linear(duration: 2.0).repeatForever(autoreverses: false), value: waveOffset)
-                .onAppear {
-                    withAnimation {
-                        self.waveOffset = .degrees(360)
-                    }
-                }
-        }
-        .edgesIgnoringSafeArea(.all)
-    }
-}
-
-struct WaveShape: Shape {
-    var offset: Angle
-
-    var animatableData: Angle.AnimatableData {
-        get { offset.radians }
-        set { offset = .radians(newValue) }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let waveHeight: CGFloat = 20
-        let wavelength = rect.width / 1.5
-
-        path.move(to: CGPoint(x: 0, y: rect.midY))
-
-        for x in stride(from: 0, through: rect.width, by: 1) {
-            let angle = Angle(degrees: Double(x) / Double(wavelength) * 360).radians + offset.radians
-            let y = rect.midY + sin(angle) * waveHeight
-            path.addLine(to: CGPoint(x: x, y: y))
-        }
-
-        path.addLine(to: CGPoint(x: rect.width, y: rect.height))
-        path.addLine(to: CGPoint(x: 0, y: rect.height))
-        path.closeSubpath()
-
-        return path
-    }
-}
-*/
