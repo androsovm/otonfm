@@ -6,6 +6,11 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		109711682DC68B100000226A /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 109711672DC68B100000226A /* RevenueCat */; };
+		1097116A2DC68B100000226A /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 109711692DC68B100000226A /* RevenueCatUI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		F00616B12DB88FB6008A40DB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				1097116A2DC68B100000226A /* RevenueCatUI in Frameworks */,
+				109711682DC68B100000226A /* RevenueCat in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +119,8 @@
 			);
 			name = Oton.FM;
 			packageProductDependencies = (
+				109711672DC68B100000226A /* RevenueCat */,
+				109711692DC68B100000226A /* RevenueCatUI */,
 			);
 			productName = Oton.FM;
 			productReference = F006169F2DB88FB4008A40DB /* Oton.FM.app */;
@@ -195,6 +204,9 @@
 			);
 			mainGroup = F00616962DB88FB4008A40DB;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F00616A02DB88FB4008A40DB /* Products */;
 			projectDirPath = "";
@@ -587,6 +599,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.22.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		109711672DC68B100000226A /* RevenueCat */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCat;
+		};
+		109711692DC68B100000226A /* RevenueCatUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;
+			productName = RevenueCatUI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = F00616972DB88FB4008A40DB /* Project object */;
 }
