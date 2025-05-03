@@ -397,7 +397,7 @@ struct ContentView: View {
                     Image(uiImage: player.artworkImage)
                         .resizable()
                         .scaledToFit()
-                        .frame(width: 260, height: 260)
+                        .frame(width: 300, height: 300)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.5), radius: 20, x: 0, y: 10)
                         .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
