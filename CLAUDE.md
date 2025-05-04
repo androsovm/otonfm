@@ -1,29 +1,42 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Этот файл содержит рекомендации для работы с кодом репозитория Oton.FM.
 
-## About Oton.FM
-Oton.FM is a radio application for the Yakut diaspora, featuring:
-- Yakut and international music
-- Programs and shows in the Yakut language
-- Cultural content for the Yakut community
-- Live streaming and on-demand content
+## О проекте Oton.FM
+Oton.FM — это радио-приложение для якутской диаспоры:
+- Якутская и международная музыка
+- Программы и шоу на якутском языке
+- Культурный контент для якутского сообщества
+- Прямой эфир и on-demand контент
 
-## Build Commands
-- Build: `xcodebuild -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15' build`
-- Test: `xcodebuild test -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15'`
-- Run single test: `xcodebuild test -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:Oton.FMTests/TestClassName/testMethodName`
+## Основные реализованные фичи
+- Буферизация аудио: при кратковременных проблемах с интернетом воспроизведение не прерывается, реализован автоматический рестарт потока при длительной буферизации.
+- Адаптивный UI: корректное отображение длинных названий треков, фиксированные и симметричные отступы между элементами, масштабируемая обложка трека.
+- Индикация состояния: отображение процесса загрузки (ProgressView) по центру между обложкой и кнопкой.
+- .gitignore: добавлен и настроен для iOS/Xcode-проекта.
+
+## Build-команды
+- Сборка: `xcodebuild -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15' build`
+- Тесты: `xcodebuild test -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15'`
+- Запуск одного теста: `xcodebuild test -scheme Oton.FM -destination 'platform=iOS Simulator,name=iPhone 15' -only-testing:Oton.FMTests/TestClassName/testMethodName`
 
 ## Code Style Guidelines
-- **Naming**: PascalCase for types (structs, classes), camelCase for properties/methods
-- **Imports**: Single imports per line, SwiftUI first, followed by Apple frameworks
-- **Error Handling**: Use `do-catch` blocks with descriptive print statements
-- **Extensions**: Place extensions at the end of the file
-- **Access Control**: Mark private properties explicitly with `private`
-- **SwiftUI Patterns**: 
-  - Use property wrappers (@State, @StateObject, @Binding) appropriately
-  - Chain modifiers on views with one modifier per line
-  - Use ZStack/VStack/HStack for layout
-  - Keep animations consistent with `.animation(.easeInOut(duration: 0.5), value: someValue)`
-- **Architecture**: Favor MVVM pattern with ObservableObject for view models
-- **Comments**: Russian comments are acceptable for debugging but should be translated to English for final code
+- PascalCase для типов (structs, classes), camelCase для свойств/методов
+- Импорты по одному на строку, сначала SwiftUI
+- Обработка ошибок через do-catch с понятными print-сообщениями
+- Расширения (extensions) в конце файла
+- Явное private для приватных свойств
+- SwiftUI: property wrappers, модификаторы по одному на строку, ZStack/VStack/HStack для layout, анимации через `.animation(.easeInOut(duration: 0.5), value: ...)`
+- Архитектура: MVVM, ObservableObject для view models
+- Русские комментарии допустимы для отладки, но в финальном коде должны быть на английском
+
+## Потенциальные улучшения (идеи для будущих фич)
+- Таймер сна (Sleep Timer)
+- Кнопка “Поделиться” текущим треком
+- Избранное (Favorites)
+- История прослушанных треков
+- Индикация качества соединения
+- Виджет “Сейчас играет”
+- Быстрая смена темы (тёмная/светлая)
+- Анимация/визуализация звука
+- Ссылки на сайт/соцсети радио
