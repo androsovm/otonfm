@@ -6,12 +6,20 @@
 //
 
 import SwiftUI
+import UIKit
 
-// @main
-struct Oton_FMApp: App {
+@main
+struct OtonFMApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @State private var isSplashActive = true
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if isSplashActive {
+                SplashView(isActive: $isSplashActive)
+            } else {
+                ContentView()
+            }
         }
     }
 }
