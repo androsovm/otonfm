@@ -451,11 +451,40 @@ struct ContentView: View {
     @State private var hapticEngine: CHHapticEngine?
     @State private var showingPaywall = false
     @State private var showPurchaseSuccess = false
+    @State private var isPremiumUser = false
     
     // Spotify-inspired colors
     private let spotifyGreen = Color(red: 30/255, green: 215/255, blue: 96/255)
     private let spotifyBlack = Color(red: 18/255, green: 18/255, blue: 18/255)
     private let spotifyDarkGray = Color(red: 40/255, green: 40/255, blue: 40/255)
+    
+    // Проверяем статус премиум-подписки при запуске
+    private func checkPremiumStatus() {
+        Purchases.shared.getCustomerInfo { (customerInfo, error) in
+            if let customerInfo = customerInfo, !customerInfo.entitlements.all.isEmpty {
+                self.isPremiumUser = true
+                print("Пользователь имеет премиум-подписку")
+            } else {
+                self.isPremiumUser = false
+                print("Пользователь не имеет премиум-подписки")
+            }
+        }
+    }
+    
+    // Проверяем условия для показа paywall
+    private func checkAndShowPaywall() {
+        // Сначала проверяем статус премиум-подписки
+        checkPremiumStatus()
+        
+        // Если пользователь не премиум, проверяем условия для показа paywall по дням
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            if !self.isPremiumUser && AppDelegate.shouldShowPaywall() {
+                self.showingPaywall = true
+                AppDelegate.markPaywallAsDisplayed()
+                print("Показываем paywall на \(AppDelegate.daysSinceFirstLaunch()) день использования")
+            }
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -523,6 +552,7 @@ struct ContentView: View {
                             Spacer()
                             
                             Button(action: {
+                                // Показываем paywall или переключаем режим тестирования при длинном нажатии
                                 showingPaywall = true
                             }) {
                                 Image(systemName: "gift.fill")
@@ -532,6 +562,21 @@ struct ContentView: View {
                                     .padding(.vertical, 8)
                                     .background(Color.white)
                                     .clipShape(Capsule())
+                            }
+                            // Добавляем длинное нажатие для активации режима тестирования
+                            .onLongPressGesture(minimumDuration: 1.5) {
+                                if AppDelegate.isPaywallTestModeEnabled() {
+                                    AppDelegate.disablePaywallTestMode()
+                                    // Показываем уведомление о выключении режима тестирования
+                                    playHapticFeedback(.heavy)
+                                } else {
+                                    AppDelegate.enablePaywallTestMode()
+                                    // Активируем режим тестирования и показываем paywall
+                                    playHapticFeedback(.heavy)
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                        showingPaywall = true
+                                    }
+                                }
                             }
                             .sheet(isPresented: $showingPaywall, onDismiss: {
                                 // Проверяем статус подписок после закрытия Paywall
@@ -547,6 +592,12 @@ struct ContentView: View {
                                                 showPurchaseSuccess = true
                                             }
                                         }
+                                    }
+                                }
+                                // Проверяем статус подписки
+                                Purchases.shared.getCustomerInfo { (info, _) in
+                                    if let info = info, !info.entitlements.all.isEmpty {
+                                        self.isPremiumUser = true
                                     }
                                 }
                             }) {
@@ -672,6 +723,8 @@ struct ContentView: View {
                 isInterfaceVisible = true
             }
             pulsateAnimation = player.isPlaying
+            // Проверяем и показываем paywall если нужно
+            checkAndShowPaywall()
         }
         .onChange(of: player.isPlaying) { isPlaying in
             pulsateAnimation = isPlaying
