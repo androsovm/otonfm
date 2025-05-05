@@ -106,7 +106,11 @@ class RadioPlayer: NSObject, ObservableObject {
         let statusURL = URL(string: "https://public.radio.co/stations/s696f24a77/status")!
         var request = URLRequest(url: statusURL)
         request.cachePolicy = .reloadIgnoringLocalCacheData
-        request.timeoutInterval = 15 // Увеличиваем таймаут до 10 секунд
+        request.timeoutInterval = 15
+        
+        // Добавляем случайный параметр для предотвращения кэширования
+        let uniqueURL = URL(string: "\(statusURL.absoluteString)?nocache=\(Date().timeIntervalSince1970)")!
+        request = URLRequest(url: uniqueURL)
         
         // Создаем новую сессию без кэширования для обновления данных
         let config = URLSessionConfiguration.default
@@ -136,8 +140,15 @@ class RadioPlayer: NSObject, ObservableObject {
             
             guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let current = json["current_track"] as? [String: Any],
-                  let artworkURLString = current["artwork_url_large"] as? String else {
-                print("⚠️ Не удалось получить URL обложки")
+                  let artworkURLString = current["artwork_url_large"] as? String,
+                  let title = current["title"] as? String else {
+                print("⚠️ Не удалось получить URL обложки или название трека")
+                return
+            }
+            
+            // Проверяем, соответствует ли текущий трек тому, для которого обновляем обложку
+            if !self.currentTrackTitle.isEmpty && title != self.currentTrackTitle && title != self.lastTrackTitle {
+                print("⚠️ Обнаружено несоответствие названий треков: API вернул \(title), текущий: \(self.currentTrackTitle)")
                 return
             }
 
@@ -193,9 +204,14 @@ class RadioPlayer: NSObject, ObservableObject {
                         let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains("s696f24a77") || artworkURLString.lowercased().contains("oton")
                         print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
                         
-                        // Обновляем обложку в любом случае
-                        self.setTrackArtwork(image)
-                        self.retryCount = 0
+                        // Обновляем обложку только если это не логотип станции или если у нас нет другой обложки
+                        if !isStationLogo || !self.hasLoadedArtworkOnce {
+                            self.setTrackArtwork(image)
+                            self.hasLoadedArtworkOnce = true
+                            self.retryCount = 0
+                        } else {
+                            print("⚠️ Пропускаем обновление логотипа станции, ожидая обложку трека")
+                        }
                     }
                 }
             }
@@ -302,10 +318,22 @@ class RadioPlayer: NSObject, ObservableObject {
                             
                             // Отменяем предыдущую задачу загрузки, если она есть
                             self.artworkLoadingTask?.cancel()
+                            self.lastTrackTitle = value
                             
                             // Запрашиваем новую обложку
                             print("🔄 Запрашиваем обложку для трека: \(value)")
+                            // Делаем первый запрос сразу, а второй с небольшой задержкой,
+                            // т.к. API иногда сначала возвращает старую обложку
                             self.fetchArtworkFromStatusAPI()
+                            
+                            // Дополнительный запрос через 2 секунды для получения обновленной обложки
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                // Проверяем, что трек не сменился за время задержки
+                                if self.currentTrackTitle == value {
+                                    print("🔄 Повторный запрос обложки для: \(value)")
+                                    self.fetchArtworkFromStatusAPI()
+                                }
+                            }
                         } else {
                             print("ℹ️ Повторное уведомление о том же треке: \(value)")
                         }
@@ -396,18 +424,6 @@ struct SplashView: View {
                     .animation(
                         Animation.easeInOut(duration: 1.2)
                             .repeatCount(1, autoreverses: false),
-                        value: animate
-                    )
-                
-                Text("OTON.FM")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.white)
-                    .tracking(5)
-                    .opacity(animate ? 1 : 0)
-                    .offset(y: animate ? 0 : 10)
-                    .animation(
-                        Animation.easeInOut(duration: 1.0)
-                            .delay(0.3),
                         value: animate
                     )
             }
@@ -559,7 +575,7 @@ struct ContentView: View {
                         
                         // Нижняя панель с фиксированной высотой для названия трека и кнопки
                         VStack(spacing: 30) {
-                            // Название трека - фиксированная высота
+                            // Название трека - фиксированная высота, поднято на 40pt вверх
                             VStack(alignment: .leading) {
                                 ZStack(alignment: .leading) {
                                     if player.isConnecting {
@@ -592,6 +608,7 @@ struct ContentView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             }
                             .padding(.horizontal, UIScreen.main.bounds.width * 0.075)
+                            .offset(y: -40) // Поднимаем текст на 40pt вверх
                             
                             // Play/Pause button
                             HStack {
