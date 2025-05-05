@@ -10,6 +10,8 @@ import AVFoundation
 import MediaPlayer
 import UIKit
 import CoreHaptics
+import RevenueCat
+import RevenueCatUI
 
 class RadioPlayer: NSObject, ObservableObject {
     static let shared = RadioPlayer()
@@ -346,26 +348,81 @@ class RadioPlayer: NSObject, ObservableObject {
 
 struct SplashView: View {
     @State private var animate = false
+    @State private var pulseAnimation = false
     @Binding var isActive: Bool
+    
+    // Spotify-inspired colors
+    private let spotifyBlack = Color(red: 18/255, green: 18/255, blue: 18/255)
+    private let spotifyGreen = Color(red: 30/255, green: 215/255, blue: 96/255)
 
     var body: some View {
         ZStack {
-            Color.white.ignoresSafeArea()
+            // Dark gradient background like Spotify
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    spotifyBlack,
+                    Color(red: 25/255, green: 20/255, blue: 20/255)
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            
+            // Optional: subtle radial gradient around the logo
+            RadialGradient(
+                gradient: Gradient(colors: [
+                    Color(red: 208/255, green: 0, blue: 0).opacity(0.3),
+                    Color.clear
+                ]),
+                center: .center,
+                startRadius: 50,
+                endRadius: 180
+            )
+            .scaleEffect(pulseAnimation ? 1.2 : 1.0)
+            .opacity(pulseAnimation ? 0.7 : 0.3)
+            .animation(
+                Animation.easeInOut(duration: 1.0)
+                    .repeatForever(autoreverses: true),
+                value: pulseAnimation
+            )
 
-            Image("otonLogo")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 120, height: 120)
-                .scaleEffect(animate ? 1.2 : 0.8)
-                .opacity(animate ? 0 : 1)
-                .animation(.easeInOut(duration: 1.5), value: animate)
+            VStack(spacing: 20) {
+                Image("otonLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 100)
+                    .scaleEffect(animate ? 1.1 : 0.9)
+                    .opacity(animate ? 1 : 0.8)
+                    .animation(
+                        Animation.easeInOut(duration: 1.2)
+                            .repeatCount(1, autoreverses: false),
+                        value: animate
+                    )
+                
+                Text("OTON.FM")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
+                    .tracking(5)
+                    .opacity(animate ? 1 : 0)
+                    .offset(y: animate ? 0 : 10)
+                    .animation(
+                        Animation.easeInOut(duration: 1.0)
+                            .delay(0.3),
+                        value: animate
+                    )
+            }
         }
         .onAppear {
             animate = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                isActive = false
+            pulseAnimation = true
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    isActive = false
+                }
             }
         }
+        .preferredColorScheme(.dark)
     }
 }
 
@@ -375,99 +432,235 @@ struct ContentView: View {
     @State private var isPressed = false
     @State private var pulsateAnimation = false
     @State private var hapticEngine: CHHapticEngine?
+    @State private var showingPaywall = false
+    @State private var showPurchaseSuccess = false
+    
+    // Spotify-inspired colors
+    private let spotifyGreen = Color(red: 30/255, green: 215/255, blue: 96/255)
+    private let spotifyBlack = Color(red: 18/255, green: 18/255, blue: 18/255)
+    private let spotifyDarkGray = Color(red: 40/255, green: 40/255, blue: 40/255)
     
     var body: some View {
         ZStack {
-            Image(uiImage: player.artworkImage)
-                .resizable()
-                .scaledToFill()
-                .blur(radius: 50)
-                .opacity(0.4)
-                .ignoresSafeArea()
-                .animation(.easeInOut(duration: 0.5), value: player.artworkId)
+            // Gradient background like Spotify
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(player.artworkImage.averageColor ?? UIColor(red: 18/255, green: 18/255, blue: 18/255, alpha: 1.0)).opacity(0.8),
+                    spotifyBlack
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+            .animation(.easeInOut(duration: 0.8), value: player.artworkId)
+            
+            // Окно успешной покупки
+            if showPurchaseSuccess {
+                VStack(spacing: 20) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 80, height: 80)
+                        .foregroundColor(spotifyGreen)
+                    
+                    Text("Спасибо за покупку!")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Text("Спасибо за покупку!")
+                        .font(.system(size: 16))
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                    
+                    Button(action: {
+                        withAnimation {
+                            showPurchaseSuccess = false
+                        }
+                    }) {
+                        Text("Продолжить")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.black)
+                            .padding(.horizontal, 30)
+                            .padding(.vertical, 12)
+                            .background(spotifyGreen)
+                            .clipShape(Capsule())
+                    }
+                    .padding(.top, 10)
+                }
+                .padding(30)
+                .background(Color.black.opacity(0.7))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: .black.opacity(0.5), radius: 20, x: 0, y: 10)
+                .transition(.scale.combined(with: .opacity))
+                .zIndex(2)
+            }
 
             if isInterfaceVisible {
-                VStack(spacing: 20) {
-                    Image("otonLogo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 120, height: 120)
-                        .padding(.bottom, -10)
-
+                VStack(spacing: 0) {
+                    // Top bar with premium button
+                    HStack {
+                        Spacer()
+                        
+                        Button(action: {
+                            showingPaywall = true
+                        }) {
+                            Image(systemName: "gift.fill")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.white)
+                                .clipShape(Capsule())
+                        }
+                        .sheet(isPresented: $showingPaywall, onDismiss: {
+                            // Проверяем статус подписок после закрытия Paywall
+                            Purchases.shared.getCustomerInfo { (customerInfo, error) in
+                                if error == nil {
+                                    let hasChanged = customerInfo?.entitlements.active.count ?? 0 > 0 && 
+                                                    customerInfo?.nonSubscriptions.count ?? 0 > 0 &&
+                                                    customerInfo?.nonSubscriptions.last?.purchaseDate.timeIntervalSinceNow ?? 0 > -10
+                                    
+                                    if hasChanged {
+                                        // Показываем экран успешной покупки только если покупка была только что совершена
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                            showPurchaseSuccess = true
+                                        }
+                                    }
+                                }
+                            }
+                        }) {
+                            PaywallView(
+                                fonts: RoundedFontProvider(), 
+                                displayCloseButton: true
+                            )
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 20)
+                    
+                    Spacer()
+                    
+                    // Artwork - large, like Spotify
                     Image(uiImage: player.artworkImage)
                         .resizable()
-                        .scaledToFit()
-                        .frame(width: 300, height: 300)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.5), radius: 20, x: 0, y: 10)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.6), radius: 25, x: 0, y: 10)
                         .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
                         .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
-                        .opacity(1.0)
-                        .animation(.easeInOut(duration: 0.5), value: player.artworkId)
-
-                    Group {
+                        .padding(.bottom, 50)
+                        .animation(.easeInOut(duration: 0.6), value: player.artworkId)
+                    
+                    Spacer()
+                    
+                    // Title and station info section
+                    VStack(alignment: .leading, spacing: 10) {
                         if player.isConnecting {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: player.artworkImage.averageColor?.isLightColor == true ? .black : .white))
-                                .frame(height: 50)
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(1.2)
+                                    .frame(height: 60)
+                                Spacer()
+                            }
                         } else {
                             Text(player.currentTrackTitle)
                                 .id(player.currentTrackTitle)
-                                .font(.headline)
-                                .foregroundColor(player.artworkImage.averageColor?.isLightColor == true ? .black : .white)
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.white)
                                 .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 50)
-                                .padding(.horizontal)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .transition(.opacity)
                                 .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
-                        }
-                    }
-
-                    Button(action: {
-                        playComplexHaptic()
-                        
-                        if player.isPlaying {
-                            player.pause()
-                        } else {
-                            player.playStream()
-                        }
-                        pulsateAnimation = player.isPlaying
-                    }) {
-                        ZStack {
-                            Circle()
-                                .fill(Color(player.artworkImage.averageColor ?? .white).opacity(0.5))
-                                .blur(radius: 20)
-                                .frame(width: 120, height: 120)
-                                .scaleEffect(player.isPlaying ? 1.3 : 1.0)
-                                .animation(.easeInOut(duration: 3.0).repeatForever(autoreverses: true), value: player.isPlaying)
                             
-                            Image(systemName: player.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                                .resizable()
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(.white, Color(red: 208/255, green: 0, blue: 0))
-                                .frame(width: 80, height: 80)
-                                .shadow(color: Color(red: 208/255, green: 0, blue: 0).opacity(0.6), radius: 15, x: 0, y: 0)
-                                .scaleEffect(isPressed ? 0.85 : 1.0)
-                                .animation(.easeOut(duration: 0.2), value: isPressed)
+                            Text("Oton.FM Live")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.gray)
                         }
                     }
-                    .buttonStyle(.plain)
-                    .simultaneousGesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { _ in 
-                                isPressed = true
-                                playHapticFeedback(.light)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal)
+                    .padding(.bottom, 25)
+                    
+                    // Player controls section (Spotify styled)
+                    VStack(spacing: 25) {
+                        // Buffer indicator
+                        if player.isBuffering {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                    .scaleEffect(1.0)
+                                Text("Буферизация...")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.gray)
+                                Spacer()
                             }
-                            .onEnded { _ in 
-                                isPressed = false
-                                playHapticFeedback(.light)
+                            .padding(.bottom, 5)
+                        }
+                        
+                        // Play/Pause button
+                        HStack {
+                            Spacer()
+                            
+                            Button(action: {
+                                playComplexHaptic()
+                                
+                                if player.isPlaying {
+                                    player.pause()
+                                } else {
+                                    player.playStream()
+                                }
+                                pulsateAnimation = player.isPlaying
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.white)
+                                        .frame(width: 64, height: 64)
+                                    
+                                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                        .font(.system(size: 30, weight: .bold))
+                                        .foregroundColor(spotifyBlack)
+                                        .offset(x: player.isPlaying ? 0 : 2)
+                                }
+                                .scaleEffect(isPressed ? 0.9 : 1.0)
+                                .animation(.easeOut(duration: 0.2), value: isPressed)
                             }
-                    )
+                            .buttonStyle(.plain)
+                            .simultaneousGesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { _ in 
+                                        isPressed = true
+                                        playHapticFeedback(.light)
+                                    }
+                                    .onEnded { _ in 
+                                        isPressed = false
+                                        playHapticFeedback(.light)
+                                    }
+                            )
+                            
+                            Spacer()
+                        }
+                        
+                        // Devices/Cast button (like Spotify)
+                        HStack {
+                            Spacer()
+                            
+                            Button(action: {}) {
+                                Image(systemName: "speaker.wave.3.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(.gray)
+                            }
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 20)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 30)
                 }
-                .padding()
                 .transition(.opacity)
                 .animation(.easeInOut(duration: 1.0), value: isInterfaceVisible)
             }
@@ -485,6 +678,7 @@ struct ContentView: View {
             playHapticFeedback(.medium)
         }
         .onAppear(perform: prepareHaptics)
+        .preferredColorScheme(.dark) // Spotify всегда использует темную тему
     }
     
     // Подготавливаем haptic engine
@@ -561,6 +755,38 @@ extension UIColor {
         var white: CGFloat = 0
         getWhite(&white, alpha: nil)
         return white > 0.7
+    }
+}
+
+// Font provider для PaywallView
+struct RoundedFontProvider: PaywallFontProvider {
+    func font(for textStyle: Font.TextStyle) -> Font {
+        switch textStyle {
+        case .largeTitle:
+            return Font.system(size: 34, weight: .bold, design: .rounded)
+        case .title:
+            return Font.system(size: 28, weight: .bold, design: .rounded)
+        case .title2:
+            return Font.system(size: 22, weight: .bold, design: .rounded)
+        case .title3:
+            return Font.system(size: 20, weight: .semibold, design: .rounded)
+        case .headline:
+            return Font.system(size: 17, weight: .semibold, design: .rounded)
+        case .body:
+            return Font.system(size: 17, weight: .regular, design: .rounded)
+        case .callout:
+            return Font.system(size: 16, weight: .regular, design: .rounded)
+        case .subheadline:
+            return Font.system(size: 15, weight: .regular, design: .rounded)
+        case .footnote:
+            return Font.system(size: 13, weight: .regular, design: .rounded)
+        case .caption:
+            return Font.system(size: 12, weight: .regular, design: .rounded)
+        case .caption2:
+            return Font.system(size: 11, weight: .regular, design: .rounded)
+        @unknown default:
+            return Font.system(size: 17, weight: .regular, design: .rounded)
+        }
     }
 }
 
