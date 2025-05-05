@@ -416,7 +416,7 @@ struct SplashView: View {
             )
 
             VStack(spacing: 20) {
-                Image("otonLogo")
+                Image("otonLogo-Light")
                     .resizable()
                     .scaledToFit()
                     .frame(width: 100, height: 100)
