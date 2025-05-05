@@ -582,7 +582,7 @@ struct ContentView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal)
+                    .padding(.horizontal, UIScreen.main.bounds.width * 0.075) // Соответствует отступам обложки (7.5% с каждой стороны)
                     .padding(.bottom, 25)
                     
                     // Player controls section (Spotify styled)
@@ -645,18 +645,6 @@ struct ContentView: View {
                             Spacer()
                         }
                         
-                        // Devices/Cast button (like Spotify)
-                        HStack {
-                            Spacer()
-                            
-                            Button(action: {}) {
-                                Image(systemName: "speaker.wave.3.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.bottom, 20)
                     }
                     .padding(.horizontal)
                     .padding(.bottom, 30)
