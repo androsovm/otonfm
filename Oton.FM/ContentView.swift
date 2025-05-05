@@ -497,139 +497,153 @@ struct ContentView: View {
             }
 
             if isInterfaceVisible {
-                VStack(spacing: 0) {
-                    // Top bar with premium button
-                    HStack {
-                        Spacer()
-                        
-                        Button(action: {
-                            showingPaywall = true
-                        }) {
-                            Image(systemName: "gift.fill")
-                                .font(.system(size: 18, weight: .bold))
-                                .foregroundColor(.black)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.white)
-                                .clipShape(Capsule())
-                        }
-                        .sheet(isPresented: $showingPaywall, onDismiss: {
-                            // Проверяем статус подписок после закрытия Paywall
-                            Purchases.shared.getCustomerInfo { (customerInfo, error) in
-                                if error == nil {
-                                    let hasChanged = customerInfo?.entitlements.active.count ?? 0 > 0 && 
-                                                    customerInfo?.nonSubscriptions.count ?? 0 > 0 &&
-                                                    customerInfo?.nonSubscriptions.last?.purchaseDate.timeIntervalSinceNow ?? 0 > -10
-                                    
-                                    if hasChanged {
-                                        // Показываем экран успешной покупки только если покупка была только что совершена
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                                            showPurchaseSuccess = true
-                                        }
-                                    }
-                                }
-                            }
-                        }) {
-                            PaywallView(
-                                fonts: RoundedFontProvider(), 
-                                displayCloseButton: true
-                            )
-                        }
-                    }
-                    .padding(.horizontal, UIScreen.main.bounds.width * 0.075) // Соответствует отступам обложки
-                    .padding(.top, 20)
-                    
-                    Spacer()
-                    
-                    // Artwork - large, like Spotify
-                    Image(uiImage: player.artworkImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.6), radius: 25, x: 0, y: 10)
-                        .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
-                        .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
-                        .padding(.bottom, 50)
-                        .animation(.easeInOut(duration: 0.6), value: player.artworkId)
-                    
-                    Spacer()
-                    
-                    // Title and station info section
-                    VStack(alignment: .leading, spacing: 10) {
-                        // Отображаем название трека всегда, даже при подключении,
-                        // чтобы избежать дёргания интерфейса
-                        Text(player.isConnecting ? "Подключение..." : 
-                             (player.isPlaying && !player.currentTrackTitle.isEmpty) ? player.currentTrackTitle : "OTON FM")
-                            .id(player.isConnecting ? "connecting" : 
-                                (player.isPlaying && !player.currentTrackTitle.isEmpty) ? player.currentTrackTitle : "default")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.white)
-                            .lineLimit(2)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .transition(.opacity)
-                            .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, UIScreen.main.bounds.width * 0.075) // Соответствует отступам обложки (7.5% с каждой стороны)
-                    .padding(.bottom, 40)
-                    
-                    // Player controls section (Spotify styled)
-                    VStack(spacing: 25) {
-                        // Индикатор буферизации перемещен в кнопку воспроизведения для стабильности UI
-                        
-                        // Play/Pause button
+                // Используем ZStack для фиксированного позиционирования элементов
+                ZStack {
+                    // Структура с фиксированными элементами внизу экрана
+                    VStack(spacing: 0) {
+                        // Top bar with premium button
                         HStack {
                             Spacer()
                             
                             Button(action: {
-                                playComplexHaptic()
-                                
-                                if player.isPlaying {
-                                    player.pause()
-                                } else {
-                                    player.playStream()
-                                }
-                                pulsateAnimation = player.isPlaying
+                                showingPaywall = true
                             }) {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.white)
-                                        .frame(width: 64, height: 64)
-                                    
-                                    if player.isBuffering && player.isPlaying {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: spotifyBlack))
-                                            .scaleEffect(1.2)
-                                    } else {
-                                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                            .font(.system(size: 30, weight: .bold))
-                                            .foregroundColor(spotifyBlack)
-                                            .offset(x: player.isPlaying ? 0 : 2)
+                                Image(systemName: "gift.fill")
+                                    .font(.system(size: 18, weight: .bold))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color.white)
+                                    .clipShape(Capsule())
+                            }
+                            .sheet(isPresented: $showingPaywall, onDismiss: {
+                                // Проверяем статус подписок после закрытия Paywall
+                                Purchases.shared.getCustomerInfo { (customerInfo, error) in
+                                    if error == nil {
+                                        let hasChanged = customerInfo?.entitlements.active.count ?? 0 > 0 && 
+                                                        customerInfo?.nonSubscriptions.count ?? 0 > 0 &&
+                                                        customerInfo?.nonSubscriptions.last?.purchaseDate.timeIntervalSinceNow ?? 0 > -10
+                                        
+                                        if hasChanged {
+                                            // Показываем экран успешной покупки только если покупка была только что совершена
+                                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                                                showPurchaseSuccess = true
+                                            }
+                                        }
                                     }
                                 }
-                                .scaleEffect(isPressed ? 0.9 : 1.0)
-                                .animation(.easeOut(duration: 0.2), value: isPressed)
+                            }) {
+                                PaywallView(
+                                    fonts: RoundedFontProvider(), 
+                                    displayCloseButton: true
+                                )
                             }
-                            .buttonStyle(.plain)
-                            .simultaneousGesture(
-                                DragGesture(minimumDistance: 0)
-                                    .onChanged { _ in 
-                                        isPressed = true
-                                        playHapticFeedback(.light)
-                                    }
-                                    .onEnded { _ in 
-                                        isPressed = false
-                                        playHapticFeedback(.light)
-                                    }
-                            )
-                            
-                            Spacer()
                         }
+                        .padding(.horizontal, UIScreen.main.bounds.width * 0.075)
+                        .padding(.top, 20)
                         
+                        Spacer()
+                        
+                        // Центральная часть с обложкой (фиксированный размер)
+                        Image(uiImage: player.artworkImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.6), radius: 25, x: 0, y: 10)
+                            .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
+                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
+                            .animation(.easeInOut(duration: 0.6), value: player.artworkId)
+                        
+                        Spacer()
+                        
+                        // Нижняя панель с фиксированной высотой для названия трека и кнопки
+                        VStack(spacing: 30) {
+                            // Название трека - фиксированная высота
+                            VStack(alignment: .leading) {
+                                ZStack(alignment: .leading) {
+                                    if player.isConnecting {
+                                        Text("Подключение...")
+                                            .font(.system(size: 22, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .lineLimit(2)
+                                            .frame(height: 60, alignment: .leading)
+                                            .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
+                                    } else if player.isPlaying && !player.currentTrackTitle.isEmpty {
+                                        Text(player.currentTrackTitle)
+                                            .id(player.currentTrackTitle)
+                                            .font(.system(size: 22, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .lineLimit(2)
+                                            .frame(height: 60, alignment: .leading)
+                                            .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
+                                    } else {
+                                        Text("OTON FM")
+                                            .font(.system(size: 22, weight: .bold))
+                                            .foregroundColor(.white)
+                                            .lineLimit(2)
+                                            .frame(height: 60, alignment: .leading)
+                                            .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
+                                    }
+                                }
+                                .animation(.easeInOut(duration: 0.5), value: player.isConnecting)
+                                .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
+                                .animation(.easeInOut(duration: 0.5), value: player.isPlaying)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .padding(.horizontal, UIScreen.main.bounds.width * 0.075)
+                            
+                            // Play/Pause button
+                            HStack {
+                                Spacer()
+                                
+                                Button(action: {
+                                    playComplexHaptic()
+                                    
+                                    if player.isPlaying {
+                                        player.pause()
+                                    } else {
+                                        player.playStream()
+                                    }
+                                    pulsateAnimation = player.isPlaying
+                                }) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(Color.white)
+                                            .frame(width: 64, height: 64)
+                                        
+                                        if player.isBuffering && player.isPlaying {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: spotifyBlack))
+                                                .scaleEffect(1.2)
+                                        } else {
+                                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                                .font(.system(size: 30, weight: .bold))
+                                                .foregroundColor(spotifyBlack)
+                                                .offset(x: player.isPlaying ? 0 : 2)
+                                        }
+                                    }
+                                    .scaleEffect(isPressed ? 0.9 : 1.0)
+                                    .animation(.easeOut(duration: 0.2), value: isPressed)
+                                }
+                                .buttonStyle(.plain)
+                                .simultaneousGesture(
+                                    DragGesture(minimumDistance: 0)
+                                        .onChanged { _ in 
+                                            isPressed = true
+                                            playHapticFeedback(.light)
+                                        }
+                                        .onEnded { _ in 
+                                            isPressed = false
+                                            playHapticFeedback(.light)
+                                        }
+                                )
+                                
+                                Spacer()
+                            }
+                            .padding(.bottom, 30)
+                        }
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 30)
                 }
                 .transition(.opacity)
                 .animation(.easeInOut(duration: 1.0), value: isInterfaceVisible)
