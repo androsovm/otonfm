@@ -211,6 +211,7 @@ class RadioPlayer: NSObject, ObservableObject {
                             self.retryCount = 0
                         } else {
                             print("⚠️ Пропускаем обновление логотипа станции, ожидая обложку трека")
+                            self.setDefaultArtwork()
                         }
                     }
                 }
