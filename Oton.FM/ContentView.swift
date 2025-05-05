@@ -454,7 +454,7 @@ struct ContentView: View {
     @State private var isPremiumUser = false
     
     // Spotify-inspired colors
-    private let spotifyGreen = Color(red: 30/255, green: 215/255, blue: 96/255)
+    private let spotifyGreen = Color(UIColor(red: 0.81, green: 0.17, blue: 0.17, alpha: 1.00))
     private let spotifyBlack = Color(red: 18/255, green: 18/255, blue: 18/255)
     private let spotifyDarkGray = Color(red: 40/255, green: 40/255, blue: 40/255)
     
@@ -509,7 +509,7 @@ struct ContentView: View {
                         .frame(width: 80, height: 80)
                         .foregroundColor(spotifyGreen)
                     
-                    Text("Спасибо за покупку!")
+                    Text("Көмөҥ иһин барҕа махтал!")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundColor(.white)
                     
