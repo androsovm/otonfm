@@ -631,11 +631,8 @@ struct ContentView: View {
                             VStack(alignment: .leading) {
                                 ZStack(alignment: .leading) {
                                     if player.isConnecting {
-                                        Text("Подключение...")
-                                            .font(.system(size: 22, weight: .bold))
-                                            .foregroundColor(.white)
+                                        ConnectingText()
                                             .lineLimit(2)
-                                            .frame(height: 60, alignment: .leading)
                                             .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
                                     } else if player.isPlaying && !player.currentTrackTitle.isEmpty {
                                         Text(player.currentTrackTitle)
