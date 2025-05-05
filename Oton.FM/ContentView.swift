@@ -557,50 +557,26 @@ struct ContentView: View {
                     
                     // Title and station info section
                     VStack(alignment: .leading, spacing: 10) {
-                        if player.isConnecting {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(1.2)
-                                    .frame(height: 60)
-                                Spacer()
-                            }
-                        } else {
-                            Text(player.currentTrackTitle)
-                                .id(player.currentTrackTitle)
-                                .font(.system(size: 22, weight: .bold))
-                                .foregroundColor(.white)
-                                .lineLimit(2)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .transition(.opacity)
-                                .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
-                            
-                            Text("Oton.FM Live")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.gray)
-                        }
+                        // Отображаем название трека всегда, даже при подключении,
+                        // чтобы избежать дёргания интерфейса
+                        Text(player.isConnecting ? "Подключение..." : 
+                             (player.isPlaying && !player.currentTrackTitle.isEmpty) ? player.currentTrackTitle : "OTON FM")
+                            .id(player.isConnecting ? "connecting" : 
+                                (player.isPlaying && !player.currentTrackTitle.isEmpty) ? player.currentTrackTitle : "default")
+                            .font(.system(size: 22, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .transition(.opacity)
+                            .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, UIScreen.main.bounds.width * 0.075) // Соответствует отступам обложки (7.5% с каждой стороны)
-                    .padding(.bottom, 25)
+                    .padding(.bottom, 40)
                     
                     // Player controls section (Spotify styled)
                     VStack(spacing: 25) {
-                        // Buffer indicator
-                        if player.isBuffering {
-                            HStack {
-                                Spacer()
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .scaleEffect(1.0)
-                                Text("Буферизация...")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.gray)
-                                Spacer()
-                            }
-                            .padding(.bottom, 5)
-                        }
+                        // Индикатор буферизации перемещен в кнопку воспроизведения для стабильности UI
                         
                         // Play/Pause button
                         HStack {
@@ -621,10 +597,16 @@ struct ContentView: View {
                                         .fill(Color.white)
                                         .frame(width: 64, height: 64)
                                     
-                                    Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                        .font(.system(size: 30, weight: .bold))
-                                        .foregroundColor(spotifyBlack)
-                                        .offset(x: player.isPlaying ? 0 : 2)
+                                    if player.isBuffering && player.isPlaying {
+                                        ProgressView()
+                                            .progressViewStyle(CircularProgressViewStyle(tint: spotifyBlack))
+                                            .scaleEffect(1.2)
+                                    } else {
+                                        Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
+                                            .font(.system(size: 30, weight: .bold))
+                                            .foregroundColor(spotifyBlack)
+                                            .offset(x: player.isPlaying ? 0 : 2)
+                                    }
                                 }
                                 .scaleEffect(isPressed ? 0.9 : 1.0)
                                 .animation(.easeOut(duration: 0.2), value: isPressed)
