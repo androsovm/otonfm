@@ -536,7 +536,7 @@ struct ContentView: View {
                             )
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, UIScreen.main.bounds.width * 0.075) // Соответствует отступам обложки
                     .padding(.top, 20)
                     
                     Spacer()
