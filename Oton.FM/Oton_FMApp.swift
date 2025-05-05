@@ -9,7 +9,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct OtonFMApp: App {
+struct Oton_FMApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var isSplashActive = true
 

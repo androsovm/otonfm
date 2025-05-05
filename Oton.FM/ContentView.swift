@@ -531,21 +531,6 @@ struct ContentView: View {
     }
 }
 
-@main
-struct OtonFMApp: App {
-    @State private var isSplashActive = true
-
-    var body: some Scene {
-        WindowGroup {
-            if isSplashActive {
-                SplashView(isActive: $isSplashActive)
-            } else {
-                ContentView()
-            }
-        }
-    }
-}
-
 extension UIImage {
     var averageColor: UIColor? {
         guard let inputImage = CIImage(image: self) else { return nil }
