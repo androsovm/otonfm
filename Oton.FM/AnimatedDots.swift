@@ -25,7 +25,7 @@ struct AnimatedDots: View {
 struct ConnectingText: View {
     var body: some View {
         HStack(spacing: 0) {
-            Text("Подключение")
+            Text("Холбонуу")
                 .font(.system(size: 22, weight: .bold))
             AnimatedDots()
                 .font(.system(size: 22, weight: .bold))
