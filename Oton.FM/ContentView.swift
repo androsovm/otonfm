@@ -754,6 +754,11 @@ struct ContentView: View {
         }
         .onChange(of: player.isDefaultArtworkShown) { isDefault in
             if isDefault {
+                // При каждом новом показе дефолтной обложки — случайный стартовый градиент
+                let randomIndex = Int.random(in: 0..<yakutiaGradients.count)
+                currentGradientIndex = randomIndex
+                nextGradientIndex = (randomIndex + 1) % yakutiaGradients.count
+                gradientTransition = 0.0
                 startGradientTimer()
             } else {
                 stopGradientTimer()
