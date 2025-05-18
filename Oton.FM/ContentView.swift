@@ -23,7 +23,9 @@ class RadioPlayer: NSObject, ObservableObject {
     @Published var artworkId: UUID = UUID() // Добавляем ID для отслеживания изменений
     @Published var isConnecting: Bool = false
     @Published var isBuffering: Bool = false // Новое свойство для отображения состояния буферизации
+    @Published var isDefaultArtworkShown: Bool = true // Флаг для отслеживания дефолтной обложки
     private var hasLoadedArtworkOnce = false
+    private var hasLoadedRealArtworkOnce = false // Новый флаг: была ли хоть раз реальная обложка
     private var artworkLoadingTask: URLSessionDataTask?
     private var lastTrackTitle: String = ""
     private var retryCount = 0
@@ -35,12 +37,11 @@ class RadioPlayer: NSObject, ObservableObject {
     private let bufferingTimeout: TimeInterval = 8.0
 
     private override init() {
-        // Создаем копию дефолтного изображения и добавляем обработку чтобы правильно отображались углы
         if let defaultImg = UIImage(named: "defaultArtwork") {
             let renderer = UIGraphicsImageRenderer(size: defaultImg.size)
             let roundedImage = renderer.image { context in
                 let rect = CGRect(origin: .zero, size: defaultImg.size)
-                let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062) // ~16 для изображения 260x260
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062)
                 path.addClip()
                 defaultImg.draw(in: rect)
             }
@@ -203,15 +204,14 @@ class RadioPlayer: NSObject, ObservableObject {
                         print("📊 Детальный анализ URL обложки: \(artworkURLString)")
                         let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains("s696f24a77") || artworkURLString.lowercased().contains("oton")
                         print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
-                        
-                        // Обновляем обложку только если это не логотип станции или если у нас нет другой обложки
-                        if !isStationLogo || !self.hasLoadedArtworkOnce {
-                            self.setTrackArtwork(image)
-                            self.hasLoadedArtworkOnce = true
-                            self.retryCount = 0
+                        // Если это логотип станции:
+                        if isStationLogo {
+                            if !self.hasLoadedRealArtworkOnce {
+                                self.setDefaultArtwork()
+                            } // иначе ничего не делаем, не затираем реальную обложку
                         } else {
-                            print("⚠️ Пропускаем обновление логотипа станции, ожидая обложку трека")
-                            self.setDefaultArtwork()
+                            self.setTrackArtwork(image)
+                            self.hasLoadedRealArtworkOnce = true
                         }
                     }
                 }
@@ -233,7 +233,7 @@ class RadioPlayer: NSObject, ObservableObject {
                 }
                 self.artworkImage = roundedImage
                 self.artworkId = UUID()
-                
+                self.isDefaultArtworkShown = true
                 let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
                 MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
                 print("🎵 Установлено дефолтное изображение")
@@ -250,11 +250,19 @@ class RadioPlayer: NSObject, ObservableObject {
                 path.addClip()
                 image.draw(in: rect)
             }
-            
             self.artworkImage = roundedImage
             self.artworkId = UUID()
-            print("🆔 Новый ID обложки: \(self.artworkId)")
-            
+            // Проверяем, не дефолтная ли это обложка (или логотип станции)
+            var isDefault = false
+            if let defaultImg = self.defaultArtwork,
+               let data1 = defaultImg.pngData(),
+               let data2 = image.pngData(),
+               data1 == data2 {
+                isDefault = true
+            }
+            // Если это дефолтная — оставляем флаг true, иначе false
+            self.isDefaultArtworkShown = isDefault ? true : false
+            print("🆔 Новый ID обложки: \(self.artworkId), isDefaultArtworkShown = \(self.isDefaultArtworkShown)")
             let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
             MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
             print("🎵 Обновлено изображение трека")
@@ -307,16 +315,15 @@ class RadioPlayer: NSObject, ObservableObject {
                         // Сохраняем предыдущий трек для сравнения
                         let previousTrack = self.currentTrackTitle
                         let isNewTrack = previousTrack != value
-                        
                         self.currentTrackTitle = value
                         self.isConnecting = false
                         self.isPlaying = true
                         MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] = value
-                        
                         // Загружаем обложку только если это действительно новый трек
                         if isNewTrack {
                             print("🆕 Обнаружен новый трек: \(value), предыдущий: \(previousTrack)")
-                            
+                            // Сброс флага при смене трека
+                            self.hasLoadedRealArtworkOnce = false
                             // Отменяем предыдущую задачу загрузки, если она есть
                             self.artworkLoadingTask?.cancel()
                             self.lastTrackTitle = value
@@ -452,6 +459,11 @@ struct ContentView: View {
     @State private var showingPaywall = false
     @State private var showPurchaseSuccess = false
     @State private var isPremiumUser = false
+    // --- Градиенты Якутии ---
+    @State private var currentGradientIndex: Int = Int.random(in: 0..<yakutiaGradients.count)
+    @State private var nextGradientIndex: Int = 0
+    @State private var gradientTransition: Double = 0.0
+    @State private var gradientTimer: Timer? = nil
     
     // Spotify-inspired colors
     private let spotifyGreen = Color(UIColor(red: 0.81, green: 0.17, blue: 0.17, alpha: 1.00))
@@ -488,18 +500,25 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            // Gradient background like Spotify
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    Color(player.artworkImage.averageColor ?? UIColor(red: 18/255, green: 18/255, blue: 18/255, alpha: 1.0)).opacity(0.8),
-                    spotifyBlack
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            .animation(.easeInOut(duration: 0.8), value: player.artworkId)
-            
+            // Фон: если дефолтная обложка — анимированный градиент, иначе — averageColor
+            Group {
+                if player.isDefaultArtworkShown {
+                    interpolatedGradient()
+                        .ignoresSafeArea()
+                        .animation(.easeInOut(duration: 0.8), value: currentGradientIndex)
+                } else {
+                    LinearGradient(
+                        gradient: Gradient(colors: [
+                            Color(player.artworkImage.averageColor ?? UIColor(red: 18/255, green: 18/255, blue: 18/255, alpha: 1.0)).opacity(0.8),
+                            spotifyBlack
+                        ]),
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
+                    .animation(.easeInOut(duration: 0.8), value: player.artworkId)
+                }
+            }
             // Окно успешной покупки
             if showPurchaseSuccess {
                 VStack(spacing: 20) {
@@ -722,12 +741,23 @@ struct ContentView: View {
             pulsateAnimation = player.isPlaying
             // Проверяем и показываем paywall если нужно
             checkAndShowPaywall()
+            // Запускаем таймер градиентов если дефолтная обложка
+            if player.isDefaultArtworkShown {
+                startGradientTimer()
+            }
         }
         .onChange(of: player.isPlaying) { isPlaying in
             pulsateAnimation = isPlaying
         }
         .onChange(of: player.currentTrackTitle) { _ in
             playHapticFeedback(.medium)
+        }
+        .onChange(of: player.isDefaultArtworkShown) { isDefault in
+            if isDefault {
+                startGradientTimer()
+            } else {
+                stopGradientTimer()
+            }
         }
         .onAppear(perform: prepareHaptics)
         .preferredColorScheme(.dark) // Spotify всегда использует темную тему
@@ -775,6 +805,60 @@ struct ContentView: View {
             print("Не удалось воспроизвести тактильный паттерн: \(error.localizedDescription)")
         }
     }
+    
+    // --- Методы для смены градиентов ---
+    private func startGradientTimer() {
+        stopGradientTimer()
+        nextGradientIndex = (currentGradientIndex + 1) % yakutiaGradients.count
+        gradientTransition = 0.0
+        gradientTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { _ in
+            withAnimation(.easeInOut(duration: 3.0)) {
+                gradientTransition = 1.0
+            }
+            // Через 3 секунды (длительность анимации) переключаем индексы
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                currentGradientIndex = nextGradientIndex
+                nextGradientIndex = (currentGradientIndex + 1) % yakutiaGradients.count
+                gradientTransition = 0.0
+            }
+        }
+    }
+    
+    private func stopGradientTimer() {
+        gradientTimer?.invalidate()
+        gradientTimer = nil
+    }
+    
+    // Получить плавно интерполированный градиент между двумя наборами цветов
+    private func interpolatedGradient() -> LinearGradient {
+        let from = yakutiaGradients[currentGradientIndex]
+        let to = yakutiaGradients[nextGradientIndex]
+        
+        func lerp(_ a: CGFloat, _ b: CGFloat, t: Double) -> CGFloat {
+            return a + (b - a) * CGFloat(t)
+        }
+        
+        func lerpColor(_ a: UIColor, _ b: UIColor, t: Double) -> Color {
+            var ar: CGFloat = 0, ag: CGFloat = 0, ab: CGFloat = 0, aa: CGFloat = 0
+            var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+            a.getRed(&ar, green: &ag, blue: &ab, alpha: &aa)
+            b.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+            return Color(
+                red: Double(lerp(ar, br, t: gradientTransition)),
+                green: Double(lerp(ag, bg, t: gradientTransition)),
+                blue: Double(lerp(ab, bb, t: gradientTransition)),
+                opacity: Double(lerp(aa, ba, t: gradientTransition))
+            )
+        }
+        
+        let top = lerpColor(from.topColor, to.topColor, t: gradientTransition)
+        let bottom = lerpColor(from.bottomColor, to.bottomColor, t: gradientTransition)
+        return LinearGradient(
+            gradient: Gradient(colors: [top, bottom]),
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 }
 
 // Font provider для PaywallView
@@ -808,5 +892,32 @@ struct RoundedFontProvider: PaywallFontProvider {
         }
     }
 }
+
+// --- yakutiaGradients ---
+fileprivate let yakutiaGradients: [(topColor: UIColor, bottomColor: UIColor, name: String, description: String)] = [
+    (UIColor(red: 0.53, green: 0.81, blue: 0.92, alpha: 1.0), UIColor(red: 0.34, green: 0.71, blue: 0.29, alpha: 1.0), "summerDay", "Летний день в Якутии"),
+    (UIColor(red: 0.99, green: 0.55, blue: 0.24, alpha: 1.0), UIColor(red: 0.53, green: 0.27, blue: 0.47, alpha: 1.0), "tundraSunset", "Закат в бескрайней тундре"),
+    (UIColor(red: 0.98, green: 0.74, blue: 0.47, alpha: 1.0), UIColor(red: 0.67, green: 0.82, blue: 0.98, alpha: 1.0), "lenaSunrise", "Рассвет над рекой Леной"),
+    (UIColor(red: 0.03, green: 0.05, blue: 0.15, alpha: 1.0), UIColor(red: 0.07, green: 0.08, blue: 0.22, alpha: 1.0), "starryNight", "Звездное небо Якутии"),
+    (UIColor(red: 0.10, green: 0.20, blue: 0.40, alpha: 1.0), UIColor(red: 0.17, green: 0.54, blue: 0.46, alpha: 1.0), "northernLights", "Северное сияние над якутскими просторами"),
+    (UIColor(red: 0.83, green: 0.89, blue: 0.97, alpha: 1.0), UIColor(red: 0.66, green: 0.78, blue: 0.91, alpha: 1.0), "frostyMorning", "Морозное зимнее утро в Якутии"),
+    (UIColor(red: 0.24, green: 0.53, blue: 0.24, alpha: 1.0), UIColor(red: 0.18, green: 0.32, blue: 0.14, alpha: 1.0), "summerForest", "Тайга в летнюю пору"),
+    (UIColor(red: 0.96, green: 0.87, blue: 0.62, alpha: 1.0), UIColor(red: 0.72, green: 0.55, blue: 0.30, alpha: 1.0), "ysyakh", "Ысыах - праздник лета в Якутии"),
+    (UIColor(red: 0.70, green: 0.75, blue: 0.78, alpha: 1.0), UIColor(red: 0.42, green: 0.45, blue: 0.50, alpha: 1.0), "verkhoyansk", "Горы Верхоянского хребта"),
+    (UIColor(red: 0.89, green: 0.45, blue: 0.15, alpha: 1.0), UIColor(red: 0.65, green: 0.30, blue: 0.10, alpha: 1.0), "autumnTuymaada", "Осенние краски долины Туймаада"),
+    (UIColor(red: 0.25, green: 0.32, blue: 0.45, alpha: 1.0), UIColor(red: 0.16, green: 0.19, blue: 0.28, alpha: 1.0), "yakutianGems", "Драгоценные камни Якутии"),
+    (UIColor(red: 0.85, green: 0.88, blue: 0.90, alpha: 1.0), UIColor(red: 0.65, green: 0.70, blue: 0.75, alpha: 1.0), "lenaFog", "Утренний туман над рекой Леной"),
+    // Новые градиенты:
+    (UIColor(red: 0.99, green: 0.99, blue: 0.85, alpha: 1.0), UIColor(red: 0.60, green: 0.80, blue: 0.98, alpha: 1.0), "polarDay", "Полярный день — светлое небо и холодный воздух"),
+    (UIColor(red: 0.60, green: 0.80, blue: 1.0, alpha: 1.0), UIColor(red: 0.90, green: 0.95, blue: 1.0, alpha: 1.0), "iceFairyTale", "Ледяная сказка — морозные узоры и голубой лёд"),
+    (UIColor(red: 0.98, green: 0.80, blue: 0.60, alpha: 1.0), UIColor(red: 0.60, green: 0.30, blue: 0.18, alpha: 1.0), "warmChum", "Тёплый чум — уют и тепло в зимней ночи"),
+    (UIColor(red: 0.60, green: 0.80, blue: 0.60, alpha: 1.0), UIColor(red: 0.30, green: 0.50, blue: 0.70, alpha: 1.0), "summerRain", "Летний дождь — свежесть зелени и прохлада воды"),
+    (UIColor(red: 0.40, green: 0.60, blue: 0.30, alpha: 1.0), UIColor(red: 0.80, green: 0.95, blue: 0.70, alpha: 1.0), "fairyForest", "Сказочный лес — мягкая зелень и солнечные лучи"),
+    (UIColor(red: 0.98, green: 0.70, blue: 0.30, alpha: 1.0), UIColor(red: 0.60, green: 0.30, blue: 0.10, alpha: 1.0), "amberEvening", "Янтарный вечер — тёплый свет заката"),
+    (UIColor(red: 0.98, green: 0.60, blue: 0.80, alpha: 1.0), UIColor(red: 0.60, green: 0.80, blue: 0.98, alpha: 1.0), "pinkDawn", "Розовый рассвет — нежные облака и голубое небо"),
+    (UIColor(red: 0.70, green: 0.90, blue: 1.0, alpha: 1.0), UIColor(red: 0.30, green: 0.60, blue: 0.80, alpha: 1.0), "blueIce", "Голубой лёд — прозрачность и свежесть зимы"),
+    (UIColor(red: 0.90, green: 0.30, blue: 0.30, alpha: 1.0), UIColor(red: 0.98, green: 0.80, blue: 0.60, alpha: 1.0), "ornament", "Традиционный орнамент — красные и золотые мотивы"),
+    (UIColor(red: 0.98, green: 0.60, blue: 0.30, alpha: 1.0), UIColor(red: 0.30, green: 0.10, blue: 0.05, alpha: 1.0), "cozyFire", "Уютный костёр — тепло и свет в зимнем лесу")
+]
 
 
