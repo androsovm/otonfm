@@ -1,5 +1,6 @@
 import UIKit
 import RevenueCat
+import Foundation
 
 // Ключи для UserDefaults
 enum UserDefaultsKeys {
@@ -13,7 +14,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Здесь можно выполнять дополнительную настройку приложения при запуске
         
         Purchases.logLevel = .debug
-        Purchases.configure(withAPIKey:"appl_SUEUYjngtLhXGzXaOeHnovfAmfS")
+        Purchases.configure(withAPIKey: Config.revenueCatAPIKey)
         
         // Проверяем и сохраняем дату первого запуска
         if UserDefaults.standard.object(forKey: UserDefaultsKeys.firstLaunchDate) == nil {

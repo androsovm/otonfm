@@ -46,3 +46,11 @@ fastlane/test_output
 *.orig
 *.swp
 *.swo
+
+# Project specific
+Oton.FM/Config.swift
+# Keep ConfigExample.swift - это шаблон
+*.p12
+*.cer
+*.certSigningRequest
+*.mobileprovision

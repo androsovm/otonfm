@@ -12,6 +12,7 @@ import UIKit
 import CoreHaptics
 import RevenueCat
 import RevenueCatUI
+import Foundation
 
 class RadioPlayer: NSObject, ObservableObject {
     static let shared = RadioPlayer()
@@ -54,7 +55,7 @@ class RadioPlayer: NSObject, ObservableObject {
 
     func playStream() {
         isConnecting = true
-        guard let url = URL(string: "https://s4.radio.co/s696f24a77/listen") else { return }
+        guard let url = URL(string: Config.radioStreamURL) else { return }
         do {
             try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
             try AVAudioSession.sharedInstance().setActive(true)
@@ -104,7 +105,7 @@ class RadioPlayer: NSObject, ObservableObject {
     }
 
     private func fetchArtworkFromStatusAPI() {
-        let statusURL = URL(string: "https://public.radio.co/stations/s696f24a77/status")!
+        let statusURL = URL(string: Config.radioStatusURL)!
         var request = URLRequest(url: statusURL)
         request.cachePolicy = .reloadIgnoringLocalCacheData
         request.timeoutInterval = 15
@@ -202,7 +203,7 @@ class RadioPlayer: NSObject, ObservableObject {
                 if let image = UIImage(data: imageData) {
                     DispatchQueue.main.async {
                         print("📊 Детальный анализ URL обложки: \(artworkURLString)")
-                        let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains("s696f24a77") || artworkURLString.lowercased().contains("oton")
+                        let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains(Config.radioStationID) || artworkURLString.lowercased().contains("oton")
                         print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
                         // Если это логотип станции:
                         if isStationLogo {
@@ -866,63 +867,9 @@ struct ContentView: View {
     }
 }
 
-// Font provider для PaywallView
-struct RoundedFontProvider: PaywallFontProvider {
-    func font(for textStyle: Font.TextStyle) -> Font {
-        switch textStyle {
-        case .largeTitle:
-            return Font.system(size: 34, weight: .bold, design: .rounded)
-        case .title:
-            return Font.system(size: 28, weight: .bold, design: .rounded)
-        case .title2:
-            return Font.system(size: 22, weight: .bold, design: .rounded)
-        case .title3:
-            return Font.system(size: 20, weight: .semibold, design: .rounded)
-        case .headline:
-            return Font.system(size: 17, weight: .semibold, design: .rounded)
-        case .body:
-            return Font.system(size: 17, weight: .regular, design: .rounded)
-        case .callout:
-            return Font.system(size: 16, weight: .regular, design: .rounded)
-        case .subheadline:
-            return Font.system(size: 15, weight: .regular, design: .rounded)
-        case .footnote:
-            return Font.system(size: 13, weight: .regular, design: .rounded)
-        case .caption:
-            return Font.system(size: 12, weight: .regular, design: .rounded)
-        case .caption2:
-            return Font.system(size: 11, weight: .regular, design: .rounded)
-        @unknown default:
-            return Font.system(size: 17, weight: .regular, design: .rounded)
-        }
-    }
-}
+// RoundedFontProvider перемещен в отдельный файл FontProviders.swift
 
-// --- yakutiaGradients ---
-fileprivate let yakutiaGradients: [(topColor: UIColor, bottomColor: UIColor, name: String, description: String)] = [
-    (UIColor(red: 0.53, green: 0.81, blue: 0.92, alpha: 1.0), UIColor(red: 0.34, green: 0.71, blue: 0.29, alpha: 1.0), "summerDay", "Летний день в Якутии"),
-    (UIColor(red: 0.99, green: 0.55, blue: 0.24, alpha: 1.0), UIColor(red: 0.53, green: 0.27, blue: 0.47, alpha: 1.0), "tundraSunset", "Закат в бескрайней тундре"),
-    (UIColor(red: 0.98, green: 0.74, blue: 0.47, alpha: 1.0), UIColor(red: 0.67, green: 0.82, blue: 0.98, alpha: 1.0), "lenaSunrise", "Рассвет над рекой Леной"),
-    (UIColor(red: 0.03, green: 0.05, blue: 0.15, alpha: 1.0), UIColor(red: 0.07, green: 0.08, blue: 0.22, alpha: 1.0), "starryNight", "Звездное небо Якутии"),
-    (UIColor(red: 0.10, green: 0.20, blue: 0.40, alpha: 1.0), UIColor(red: 0.17, green: 0.54, blue: 0.46, alpha: 1.0), "northernLights", "Северное сияние над якутскими просторами"),
-    (UIColor(red: 0.83, green: 0.89, blue: 0.97, alpha: 1.0), UIColor(red: 0.66, green: 0.78, blue: 0.91, alpha: 1.0), "frostyMorning", "Морозное зимнее утро в Якутии"),
-    (UIColor(red: 0.24, green: 0.53, blue: 0.24, alpha: 1.0), UIColor(red: 0.18, green: 0.32, blue: 0.14, alpha: 1.0), "summerForest", "Тайга в летнюю пору"),
-    (UIColor(red: 0.96, green: 0.87, blue: 0.62, alpha: 1.0), UIColor(red: 0.72, green: 0.55, blue: 0.30, alpha: 1.0), "ysyakh", "Ысыах - праздник лета в Якутии"),
-    (UIColor(red: 0.70, green: 0.75, blue: 0.78, alpha: 1.0), UIColor(red: 0.42, green: 0.45, blue: 0.50, alpha: 1.0), "verkhoyansk", "Горы Верхоянского хребта"),
-    (UIColor(red: 0.89, green: 0.45, blue: 0.15, alpha: 1.0), UIColor(red: 0.65, green: 0.30, blue: 0.10, alpha: 1.0), "autumnTuymaada", "Осенние краски долины Туймаада"),
-    (UIColor(red: 0.25, green: 0.32, blue: 0.45, alpha: 1.0), UIColor(red: 0.16, green: 0.19, blue: 0.28, alpha: 1.0), "yakutianGems", "Драгоценные камни Якутии"),
-    (UIColor(red: 0.85, green: 0.88, blue: 0.90, alpha: 1.0), UIColor(red: 0.65, green: 0.70, blue: 0.75, alpha: 1.0), "lenaFog", "Утренний туман над рекой Леной"),
-    // Новые градиенты:
-    (UIColor(red: 0.99, green: 0.99, blue: 0.85, alpha: 1.0), UIColor(red: 0.60, green: 0.80, blue: 0.98, alpha: 1.0), "polarDay", "Полярный день — светлое небо и холодный воздух"),
-    (UIColor(red: 0.60, green: 0.80, blue: 1.0, alpha: 1.0), UIColor(red: 0.90, green: 0.95, blue: 1.0, alpha: 1.0), "iceFairyTale", "Ледяная сказка — морозные узоры и голубой лёд"),
-    (UIColor(red: 0.98, green: 0.80, blue: 0.60, alpha: 1.0), UIColor(red: 0.60, green: 0.30, blue: 0.18, alpha: 1.0), "warmChum", "Тёплый чум — уют и тепло в зимней ночи"),
-    (UIColor(red: 0.60, green: 0.80, blue: 0.60, alpha: 1.0), UIColor(red: 0.30, green: 0.50, blue: 0.70, alpha: 1.0), "summerRain", "Летний дождь — свежесть зелени и прохлада воды"),
-    (UIColor(red: 0.40, green: 0.60, blue: 0.30, alpha: 1.0), UIColor(red: 0.80, green: 0.95, blue: 0.70, alpha: 1.0), "fairyForest", "Сказочный лес — мягкая зелень и солнечные лучи"),
-    (UIColor(red: 0.98, green: 0.70, blue: 0.30, alpha: 1.0), UIColor(red: 0.60, green: 0.30, blue: 0.10, alpha: 1.0), "amberEvening", "Янтарный вечер — тёплый свет заката"),
-    (UIColor(red: 0.98, green: 0.60, blue: 0.80, alpha: 1.0), UIColor(red: 0.60, green: 0.80, blue: 0.98, alpha: 1.0), "pinkDawn", "Розовый рассвет — нежные облака и голубое небо"),
-    (UIColor(red: 0.70, green: 0.90, blue: 1.0, alpha: 1.0), UIColor(red: 0.30, green: 0.60, blue: 0.80, alpha: 1.0), "blueIce", "Голубой лёд — прозрачность и свежесть зимы"),
-    (UIColor(red: 0.90, green: 0.30, blue: 0.30, alpha: 1.0), UIColor(red: 0.98, green: 0.80, blue: 0.60, alpha: 1.0), "ornament", "Традиционный орнамент — красные и золотые мотивы"),
-    (UIColor(red: 0.98, green: 0.60, blue: 0.30, alpha: 1.0), UIColor(red: 0.30, green: 0.10, blue: 0.05, alpha: 1.0), "cozyFire", "Уютный костёр — тепло и свет в зимнем лесу")
-]
+// yakutiaGradients перемещены в отдельный файл YakutiaGradients.swift
+fileprivate let yakutiaGradients = YakutiaGradients.shared.gradients
 
 
