@@ -94,6 +94,13 @@ open Oton.FM.xcodeproj
 
 ## Вклад в проект
 
+Мы рады любым изменениям, которые сделают наше приложение лучше! Например:
+- Улучшенные анимации (например, если у песни нет обложки — показывать градиент с мерцающими звездами)
+- Улучшения UX
+- Новые визуальные эффекты
+- Креативные идеи по интерфейсу
+- Любые другие инициативы, которые повысят качество и удобство приложения
+
 1. Fork репозиторий
 2. Создайте ветку для новой функции (`git checkout -b feature/amazing-feature`)
 3. Сделайте изменения и коммиты (`git commit -m 'Add some amazing feature'`)
@@ -113,3 +120,4 @@ open Oton.FM.xcodeproj
 
 - Имя - [androsovm@gmail.com](mailto:androsovm@gmail.com)
 - GitHub: [https://github.com/androsovm](https://github.com/androsovm)
+- Telegram: @michil
