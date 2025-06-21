@@ -454,7 +454,6 @@ struct SplashView: View {
 struct ContentView: View {
     @StateObject private var player = RadioPlayer.shared
     @State private var isInterfaceVisible = false
-    @State private var isPressed = false
     @State private var pulsateAnimation = false
     @State private var hapticEngine: CHHapticEngine?
     @State private var showingPaywall = false
@@ -633,100 +632,26 @@ struct ContentView: View {
                         Spacer()
                         
                         // Центральная часть с обложкой (фиксированный размер)
-                        Image(uiImage: player.artworkImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: UIScreen.main.bounds.width * 0.85, height: UIScreen.main.bounds.width * 0.85)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .shadow(color: Color(player.artworkImage.averageColor ?? .black).opacity(0.6), radius: 25, x: 0, y: 10)
-                            .scaleEffect(player.isPlaying && pulsateAnimation ? 1.02 : 1.0)
-                            .animation(.easeInOut(duration: 1.5).repeatForever(autoreverses: true), value: pulsateAnimation)
-                            .animation(.easeInOut(duration: 0.6), value: player.artworkId)
+                        ArtworkView(
+                            image: player.artworkImage,
+                            artworkId: player.artworkId,
+                            isPlaying: player.isPlaying,
+                            pulsateAnimation: $pulsateAnimation
+                        )
                         
                         Spacer()
                         
                         // Нижняя панель с фиксированной высотой для названия трека и кнопки
                         VStack(spacing: 30) {
                             // Название трека - фиксированная высота, поднято на 40pt вверх
-                            VStack(alignment: .leading) {
-                                ZStack(alignment: .leading) {
-                                    if player.isConnecting {
-                                        ConnectingText()
-                                            .lineLimit(2)
-                                            .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
-                                    } else if player.isPlaying && !player.currentTrackTitle.isEmpty {
-                                        Text(player.currentTrackTitle)
-                                            .id(player.currentTrackTitle)
-                                            .font(.system(size: 22, weight: .bold))
-                                            .foregroundColor(.white)
-                                            .lineLimit(2)
-                                            .frame(height: 60, alignment: .leading)
-                                            .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
-                                    } else {
-                                        Text("OTON FM")
-                                            .font(.system(size: 22, weight: .bold))
-                                            .foregroundColor(.white)
-                                            .lineLimit(2)
-                                            .frame(height: 60, alignment: .leading)
-                                            .transition(AnyTransition.opacity.combined(with: .move(edge: .bottom)))
-                                    }
-                                }
-                                .animation(.easeInOut(duration: 0.5), value: player.isConnecting)
-                                .animation(.easeInOut(duration: 0.5), value: player.currentTrackTitle)
-                                .animation(.easeInOut(duration: 0.5), value: player.isPlaying)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                            }
-                            .padding(.horizontal, UIScreen.main.bounds.width * 0.075)
-                            .offset(y: -40) // Поднимаем текст на 40pt вверх
+                            TrackInfoView(
+                                isConnecting: player.isConnecting,
+                                isPlaying: player.isPlaying,
+                                trackTitle: player.currentTrackTitle
+                            )
                             
                             // Play/Pause button
-                            HStack {
-                                Spacer()
-                                
-                                Button(action: {
-                                    playComplexHaptic()
-                                    
-                                    if player.isPlaying {
-                                        player.pause()
-                                    } else {
-                                        player.playStream()
-                                    }
-                                    pulsateAnimation = player.isPlaying
-                                }) {
-                                    ZStack {
-                                        Circle()
-                                            .fill(Color.white)
-                                            .frame(width: 64, height: 64)
-                                        
-                                        if player.isBuffering && player.isPlaying {
-                                            ProgressView()
-                                                .progressViewStyle(CircularProgressViewStyle(tint: spotifyBlack))
-                                                .scaleEffect(1.2)
-                                        } else {
-                                            Image(systemName: player.isPlaying ? "pause.fill" : "play.fill")
-                                                .font(.system(size: 30, weight: .bold))
-                                                .foregroundColor(spotifyBlack)
-                                                .offset(x: player.isPlaying ? 0 : 2)
-                                        }
-                                    }
-                                    .scaleEffect(isPressed ? 0.9 : 1.0)
-                                    .animation(.easeOut(duration: 0.2), value: isPressed)
-                                }
-                                .buttonStyle(.plain)
-                                .simultaneousGesture(
-                                    DragGesture(minimumDistance: 0)
-                                        .onChanged { _ in 
-                                            isPressed = true
-                                            playHapticFeedback(.light)
-                                        }
-                                        .onEnded { _ in 
-                                            isPressed = false
-                                            playHapticFeedback(.light)
-                                        }
-                                )
-                                
-                                Spacer()
-                            }
+                            PlayerControlsView(player: player, pulsateAnimation: $pulsateAnimation)
                             .padding(.bottom, 30)
                         }
                     }
