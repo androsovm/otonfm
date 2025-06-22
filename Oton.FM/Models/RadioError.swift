@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum RadioError: LocalizedError {
+enum RadioError: LocalizedError, Equatable {
     case networkUnavailable
     case streamUnavailable
     case bufferingTimeout

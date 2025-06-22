@@ -7,12 +7,13 @@
 
 import Foundation
 
-enum PlayerState {
+enum PlayerState: Equatable {
     case stopped
     case connecting
     case playing
+    case paused
     case buffering
-    case error(String)
+    case error(RadioError)
     
     var isPlaying: Bool {
         switch self {

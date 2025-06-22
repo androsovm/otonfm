@@ -16,26 +16,22 @@ import Foundation
 
 class RadioPlayer: NSObject, ObservableObject {
     static let shared = RadioPlayer()
-    private var player: AVPlayer?
-    private let defaultArtwork = UIImage(named: "defaultArtwork") // Исходное изображение заставки без обработки
+    private let defaultArtwork = UIImage(named: "defaultArtwork")
     @Published var isPlaying = false
     @Published var currentTrackTitle: String = ""
     @Published var artworkImage: UIImage
-    @Published var artworkId: UUID = UUID() // Добавляем ID для отслеживания изменений
+    @Published var artworkId: UUID = UUID()
     @Published var isConnecting: Bool = false
-    @Published var isBuffering: Bool = false // Новое свойство для отображения состояния буферизации
-    @Published var isDefaultArtworkShown: Bool = true // Флаг для отслеживания дефолтной обложки
-    private var hasLoadedArtworkOnce = false
-    private var hasLoadedRealArtworkOnce = false // Новый флаг: была ли хоть раз реальная обложка
+    @Published var isBuffering: Bool = false
+    @Published var isDefaultArtworkShown: Bool = true
+    private var hasLoadedRealArtworkOnce = false
     private var artworkLoadingTask: URLSessionDataTask?
     private var lastTrackTitle: String = ""
     private var retryCount = 0
     private let maxRetries = 3
-    private var bufferObservers: [NSKeyValueObservation] = []
-    private var bufferingRestartWorkItem: DispatchWorkItem? = nil
-    private var autoRestartAttempts = 0
-    private let maxAutoRestartAttempts = 3
-    private let bufferingTimeout: TimeInterval = 8.0
+    
+    // Audio service
+    private let audioServiceWrapper = AudioServiceWrapper()
 
     private override init() {
         if let defaultImg = UIImage(named: "defaultArtwork") {
@@ -51,57 +47,18 @@ class RadioPlayer: NSObject, ObservableObject {
             self.artworkImage = UIImage()
         }
         super.init()
+        
+        // Initialize new audio service wrapper
+        setupAudioServiceWrapper()
     }
 
     func playStream() {
-        isConnecting = true
         guard let url = URL(string: Config.radioStreamURL) else { return }
-        do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
-            try AVAudioSession.sharedInstance().setActive(true)
-        } catch {
-            print("Failed to set up audio session: \(error)")
-        }
-        player = AVPlayer(url: url)
-        // Настройка буфера: 20 секунд
-        player?.currentItem?.preferredForwardBufferDuration = 20
-        // Удаляем старые наблюдатели
-        bufferObservers.forEach { $0.invalidate() }
-        bufferObservers.removeAll()
-        // Добавляем KVO на буферизацию
-        if let item = player?.currentItem {
-            let obs1 = item.observe(\AVPlayerItem.isPlaybackBufferEmpty, options: [.new, .initial]) { [weak self] item, change in
-                DispatchQueue.main.async {
-                    if item.isPlaybackBufferEmpty {
-                        self?.isBuffering = true
-                        print("[Buffer] Буфер пуст, начинается буферизация...")
-                        self?.scheduleBufferingRestart()
-                    }
-                }
-            }
-            let obs2 = item.observe(\AVPlayerItem.isPlaybackLikelyToKeepUp, options: [.new, .initial]) { [weak self] item, change in
-                DispatchQueue.main.async {
-                    if item.isPlaybackLikelyToKeepUp {
-                        self?.isBuffering = false
-                        print("[Buffer] Буфер наполнен, продолжаем воспроизведение.")
-                        self?.cancelBufferingRestart()
-                        self?.autoRestartAttempts = 0 // Сброс попыток при восстановлении
-                    }
-                }
-            }
-            bufferObservers.append(contentsOf: [obs1, obs2])
-        }
-        player?.currentItem?.addObserver(self, forKeyPath: "timedMetadata", options: [.new, .initial], context: nil)
-        player?.play()
+        
+        audioServiceWrapper.play(url: url)
         fetchArtworkFromStatusAPI()
         setupNowPlaying()
         setupRemoteCommandCenter()
-        
-        // Установка isPlaying в true до получения метаданных
-        // чтобы активировать пульсацию сразу
-        DispatchQueue.main.async {
-            self.isPlaying = true
-        }
     }
 
     private func fetchArtworkFromStatusAPI() {
@@ -205,15 +162,7 @@ class RadioPlayer: NSObject, ObservableObject {
                         print("📊 Детальный анализ URL обложки: \(artworkURLString)")
                         let isStationLogo = artworkURLString.contains("station_logos") || artworkURLString.contains(Config.radioStationID) || artworkURLString.lowercased().contains("oton")
                         print("🔍 Это логотип станции? \(isStationLogo ? "Да" : "Нет")")
-                        // Если это логотип станции:
-                        if isStationLogo {
-                            if !self.hasLoadedRealArtworkOnce {
-                                self.setDefaultArtwork()
-                            } // иначе ничего не делаем, не затираем реальную обложку
-                        } else {
-                            self.setTrackArtwork(image)
-                            self.hasLoadedRealArtworkOnce = true
-                        }
+                        self.updateArtwork(with: image, isStationLogo: isStationLogo)
                     }
                 }
             }
@@ -222,59 +171,9 @@ class RadioPlayer: NSObject, ObservableObject {
         artworkLoadingTask?.resume()
     }
 
-    private func setDefaultArtwork() {
-        DispatchQueue.main.async {
-            if let defaultImg = self.defaultArtwork {
-                let renderer = UIGraphicsImageRenderer(size: defaultImg.size)
-                let roundedImage = renderer.image { context in
-                    let rect = CGRect(origin: .zero, size: defaultImg.size)
-                    let path = UIBezierPath(roundedRect: rect, cornerRadius: defaultImg.size.width * 0.062)
-                    path.addClip()
-                    defaultImg.draw(in: rect)
-                }
-                self.artworkImage = roundedImage
-                self.artworkId = UUID()
-                self.isDefaultArtworkShown = true
-                let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
-                MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-                print("🎵 Установлено дефолтное изображение")
-            }
-        }
-    }
-    
-    private func setTrackArtwork(_ image: UIImage) {
-        DispatchQueue.main.async {
-            let renderer = UIGraphicsImageRenderer(size: image.size)
-            let roundedImage = renderer.image { context in
-                let rect = CGRect(origin: .zero, size: image.size)
-                let path = UIBezierPath(roundedRect: rect, cornerRadius: image.size.width * 0.062)
-                path.addClip()
-                image.draw(in: rect)
-            }
-            self.artworkImage = roundedImage
-            self.artworkId = UUID()
-            // Проверяем, не дефолтная ли это обложка (или логотип станции)
-            var isDefault = false
-            if let defaultImg = self.defaultArtwork,
-               let data1 = defaultImg.pngData(),
-               let data2 = image.pngData(),
-               data1 == data2 {
-                isDefault = true
-            }
-            // Если это дефолтная — оставляем флаг true, иначе false
-            self.isDefaultArtworkShown = isDefault ? true : false
-            print("🆔 Новый ID обложки: \(self.artworkId), isDefaultArtworkShown = \(self.isDefaultArtworkShown)")
-            let artwork = MPMediaItemArtwork(boundsSize: roundedImage.size) { _ in roundedImage }
-            MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyArtwork] = artwork
-            print("🎵 Обновлено изображение трека")
-        }
-    }
 
     func pause() {
-        player?.pause()
-        isPlaying = false
-        isBuffering = false
-        cancelBufferingRestart()
+        audioServiceWrapper.pause()
     }
 
     private func setupNowPlaying() {
@@ -287,6 +186,44 @@ class RadioPlayer: NSObject, ObservableObject {
             MPMediaItemPropertyArtwork: artwork
         ]
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+    
+    private func updateNowPlayingInfo() {
+        var nowPlayingInfo = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        nowPlayingInfo[MPMediaItemPropertyTitle] = currentTrackTitle.isEmpty ? "Oton.FM" : currentTrackTitle
+        nowPlayingInfo[MPMediaItemPropertyArtist] = "Радио Якутии"
+        nowPlayingInfo[MPNowPlayingInfoPropertyIsLiveStream] = true
+        
+        if let artwork = artworkImage.cgImage {
+            let image = UIImage(cgImage: artwork)
+            nowPlayingInfo[MPMediaItemPropertyArtwork] = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        }
+        
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfo
+    }
+    
+    private func updateArtwork(with image: UIImage, isStationLogo: Bool) {
+        DispatchQueue.main.async {
+            let renderer = UIGraphicsImageRenderer(size: image.size)
+            let roundedImage = renderer.image { context in
+                let rect = CGRect(origin: .zero, size: image.size)
+                let path = UIBezierPath(roundedRect: rect, cornerRadius: image.size.width * 0.062)
+                path.addClip()
+                image.draw(in: rect)
+            }
+            
+            self.artworkImage = roundedImage
+            self.artworkId = UUID()
+            
+            if !isStationLogo {
+                self.hasLoadedRealArtworkOnce = true
+                self.isDefaultArtworkShown = false
+            } else {
+                self.isDefaultArtworkShown = !self.hasLoadedRealArtworkOnce
+            }
+            
+            self.updateNowPlayingInfo()
+        }
     }
 
     private func setupRemoteCommandCenter() {
@@ -306,81 +243,68 @@ class RadioPlayer: NSObject, ObservableObject {
         commandCenter.pauseCommand.isEnabled = true
     }
 
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "timedMetadata",
-           let metadataItems = player?.currentItem?.timedMetadata {
+    private func setupAudioServiceWrapper() {
+        // Setup callbacks
+        audioServiceWrapper.onPlaybackStateChanged = { [weak self] isPlaying in
+            DispatchQueue.main.async {
+                self?.isPlaying = isPlaying
+            }
+        }
+        
+        audioServiceWrapper.onBufferingStateChanged = { [weak self] isBuffering in
+            DispatchQueue.main.async {
+                self?.isBuffering = isBuffering
+            }
+        }
+        
+        audioServiceWrapper.onConnectingStateChanged = { [weak self] isConnecting in
+            DispatchQueue.main.async {
+                self?.isConnecting = isConnecting
+            }
+        }
+        
+        audioServiceWrapper.onMetadataReceived = { [weak self] metadataItems in
+            print("🎧 ContentView received \(metadataItems.count) metadata items")
             for item in metadataItems {
-                if let value = item.value as? String {
-                    print("📌 Новый трек: \(value)")
+                print("🎧 Processing metadata item: \(item.identifier?.rawValue ?? "unknown")")
+                
+                // Пробуем получить название трека разными способами
+                var title: String?
+                
+                if item.identifier == .commonIdentifierTitle {
+                    title = item.stringValue
+                } else if let value = item.value as? String {
+                    // Альтернативный способ для случаев, когда identifier не работает
+                    title = value
+                    print("🎧 Found track title via value: \(title ?? "nil")")
+                }
+                
+                if let title = title, !title.isEmpty {
+                    print("🎧 Found track title: \(title)")
                     DispatchQueue.main.async {
-                        // Сохраняем предыдущий трек для сравнения
-                        let previousTrack = self.currentTrackTitle
-                        let isNewTrack = previousTrack != value
-                        self.currentTrackTitle = value
-                        self.isConnecting = false
-                        self.isPlaying = true
-                        MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPMediaItemPropertyTitle] = value
-                        // Загружаем обложку только если это действительно новый трек
-                        if isNewTrack {
-                            print("🆕 Обнаружен новый трек: \(value), предыдущий: \(previousTrack)")
-                            // Сброс флага при смене трека
-                            self.hasLoadedRealArtworkOnce = false
-                            // Отменяем предыдущую задачу загрузки, если она есть
-                            self.artworkLoadingTask?.cancel()
-                            self.lastTrackTitle = value
+                        if self?.currentTrackTitle != title {
+                            print("🎧 Updating track title from '\(self?.currentTrackTitle ?? "nil")' to '\(title)'")
+                            self?.currentTrackTitle = title
+                            self?.lastTrackTitle = title
+                            self?.updateNowPlayingInfo()
+                            self?.retryCount = 0
                             
-                            // Запрашиваем новую обложку
-                            print("🔄 Запрашиваем обложку для трека: \(value)")
-                            // Делаем первый запрос сразу, а второй с небольшой задержкой,
-                            // т.к. API иногда сначала возвращает старую обложку
-                            self.fetchArtworkFromStatusAPI()
-                            
-                            // Дополнительный запрос через 2 секунды для получения обновленной обложки
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                                // Проверяем, что трек не сменился за время задержки
-                                if self.currentTrackTitle == value {
-                                    print("🔄 Повторный запрос обложки для: \(value)")
-                                    self.fetchArtworkFromStatusAPI()
+                            if title.contains("OtonFM") {
+                                if let stationLogo = UIImage(named: "stationLogo") {
+                                    self?.updateArtwork(with: stationLogo, isStationLogo: true)
+                                } else if let defaultImg = UIImage(named: "defaultArtwork") {
+                                    self?.updateArtwork(with: defaultImg, isStationLogo: true)
                                 }
+                            } else {
+                                self?.fetchArtworkFromStatusAPI()
                             }
-                        } else {
-                            print("ℹ️ Повторное уведомление о том же треке: \(value)")
                         }
                     }
                 }
             }
         }
     }
-
-    private func scheduleBufferingRestart() {
-        cancelBufferingRestart()
-        guard autoRestartAttempts < maxAutoRestartAttempts else {
-            print("[Buffer] Достигнут лимит автоматических попыток рестарта потока.")
-            return
-        }
-        let workItem = DispatchWorkItem { [weak self] in
-            guard let self = self else { return }
-            if self.isBuffering {
-                self.autoRestartAttempts += 1
-                print("[Buffer] Автоматический рестарт потока (попытка \(self.autoRestartAttempts)/\(self.maxAutoRestartAttempts))...")
-                self.player?.pause()
-                self.playStream()
-            }
-        }
-        bufferingRestartWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + bufferingTimeout, execute: workItem)
-    }
-
-    private func cancelBufferingRestart() {
-        bufferingRestartWorkItem?.cancel()
-        bufferingRestartWorkItem = nil
-    }
-
-    deinit {
-        bufferObservers.forEach { $0.invalidate() }
-        bufferObservers.removeAll()
-        cancelBufferingRestart()
-    }
+    
 }
 
 struct SplashView: View {
