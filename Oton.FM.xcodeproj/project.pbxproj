@@ -7,11 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		103784CD2F3665F0002D38CA /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 103784CC2F3665F0002D38CA /* WidgetKit.framework */; };
+		103784CF2F3665F0002D38CA /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 103784CE2F3665F0002D38CA /* SwiftUI.framework */; };
+		103784DC2F3665F1002D38CA /* OtonFMWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 103784CA2F3665F0002D38CA /* OtonFMWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		109711682DC68B100000226A /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 109711672DC68B100000226A /* RevenueCat */; };
 		1097116A2DC68B100000226A /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 109711692DC68B100000226A /* RevenueCatUI */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		103784DA2F3665F1002D38CA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F00616972DB88FB4008A40DB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 103784C92F3665F0002D38CA;
+			remoteInfo = OtonFMWidgetsExtension;
+		};
 		F00616B12DB88FB6008A40DB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F00616972DB88FB4008A40DB /* Project object */;
@@ -28,13 +38,48 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		103784DD2F3665F1002D38CA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				103784DC2F3665F1002D38CA /* OtonFMWidgetsExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		103784CA2F3665F0002D38CA /* OtonFMWidgetsExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = OtonFMWidgetsExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		103784CC2F3665F0002D38CA /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		103784CE2F3665F0002D38CA /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		F006169F2DB88FB4008A40DB /* Oton.FM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Oton.FM.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00616B02DB88FB6008A40DB /* Oton.FMTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Oton.FMTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F00616BA2DB88FB6008A40DB /* Oton.FMUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Oton.FMUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		103784E02F3665F1002D38CA /* Exceptions for "OtonFMWidgets" folder in "OtonFMWidgetsExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 103784C92F3665F0002D38CA /* OtonFMWidgetsExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		103784D02F3665F0002D38CA /* OtonFMWidgets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				103784E02F3665F1002D38CA /* Exceptions for "OtonFMWidgets" folder in "OtonFMWidgetsExtension" target */,
+			);
+			path = OtonFMWidgets;
+			sourceTree = "<group>";
+		};
 		F00616A12DB88FB4008A40DB /* Oton.FM */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = Oton.FM;
@@ -53,6 +98,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		103784C72F3665F0002D38CA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				103784CF2F3665F0002D38CA /* SwiftUI.framework in Frameworks */,
+				103784CD2F3665F0002D38CA /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F006169C2DB88FB4008A40DB /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -79,12 +133,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		103784CB2F3665F0002D38CA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				103784CC2F3665F0002D38CA /* WidgetKit.framework */,
+				103784CE2F3665F0002D38CA /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		F00616962DB88FB4008A40DB = {
 			isa = PBXGroup;
 			children = (
 				F00616A12DB88FB4008A40DB /* Oton.FM */,
 				F00616B32DB88FB6008A40DB /* Oton.FMTests */,
 				F00616BD2DB88FB6008A40DB /* Oton.FMUITests */,
+				103784D02F3665F0002D38CA /* OtonFMWidgets */,
+				103784CB2F3665F0002D38CA /* Frameworks */,
 				F00616A02DB88FB4008A40DB /* Products */,
 			);
 			sourceTree = "<group>";
@@ -95,6 +160,7 @@
 				F006169F2DB88FB4008A40DB /* Oton.FM.app */,
 				F00616B02DB88FB6008A40DB /* Oton.FMTests.xctest */,
 				F00616BA2DB88FB6008A40DB /* Oton.FMUITests.xctest */,
+				103784CA2F3665F0002D38CA /* OtonFMWidgetsExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,6 +168,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		103784C92F3665F0002D38CA /* OtonFMWidgetsExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 103784E12F3665F1002D38CA /* Build configuration list for PBXNativeTarget "OtonFMWidgetsExtension" */;
+			buildPhases = (
+				103784C62F3665F0002D38CA /* Sources */,
+				103784C72F3665F0002D38CA /* Frameworks */,
+				103784C82F3665F0002D38CA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				103784D02F3665F0002D38CA /* OtonFMWidgets */,
+			);
+			name = OtonFMWidgetsExtension;
+			packageProductDependencies = (
+			);
+			productName = OtonFMWidgetsExtension;
+			productReference = 103784CA2F3665F0002D38CA /* OtonFMWidgetsExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		F006169E2DB88FB4008A40DB /* Oton.FM */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F00616C42DB88FB6008A40DB /* Build configuration list for PBXNativeTarget "Oton.FM" */;
@@ -109,10 +197,12 @@
 				F006169B2DB88FB4008A40DB /* Sources */,
 				F006169C2DB88FB4008A40DB /* Frameworks */,
 				F006169D2DB88FB4008A40DB /* Resources */,
+				103784DD2F3665F1002D38CA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				103784DB2F3665F1002D38CA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				F00616A12DB88FB4008A40DB /* Oton.FM */,
@@ -179,9 +269,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1600;
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
+					103784C92F3665F0002D38CA = {
+						CreatedOnToolsVersion = 16.2;
+					};
 					F006169E2DB88FB4008A40DB = {
 						CreatedOnToolsVersion = 16.0;
 					};
@@ -215,11 +308,19 @@
 				F006169E2DB88FB4008A40DB /* Oton.FM */,
 				F00616AF2DB88FB6008A40DB /* Oton.FMTests */,
 				F00616B92DB88FB6008A40DB /* Oton.FMUITests */,
+				103784C92F3665F0002D38CA /* OtonFMWidgetsExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		103784C82F3665F0002D38CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F006169D2DB88FB4008A40DB /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -244,6 +345,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		103784C62F3665F0002D38CA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F006169B2DB88FB4008A40DB /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -268,6 +376,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		103784DB2F3665F1002D38CA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 103784C92F3665F0002D38CA /* OtonFMWidgetsExtension */;
+			targetProxy = 103784DA2F3665F1002D38CA /* PBXContainerItemProxy */;
+		};
 		F00616B22DB88FB6008A40DB /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = F006169E2DB88FB4008A40DB /* Oton.FM */;
@@ -281,6 +394,65 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		103784DE2F3665F1002D38CA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2X79PBU2SZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OtonFMWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OtonFMWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = kst.Oton.FM2.OtonFMWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		103784DF2F3665F1002D38CA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2X79PBU2SZ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = OtonFMWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = OtonFMWidgets;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = kst.Oton.FM2.OtonFMWidgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		F00616C22DB88FB6008A40DB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -564,6 +736,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		103784E12F3665F1002D38CA /* Build configuration list for PBXNativeTarget "OtonFMWidgetsExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				103784DE2F3665F1002D38CA /* Debug */,
+				103784DF2F3665F1002D38CA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		F006169A2DB88FB4008A40DB /* Build configuration list for PBXProject "Oton.FM" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
