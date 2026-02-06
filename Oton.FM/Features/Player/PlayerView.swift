@@ -6,6 +6,7 @@ struct PlayerView: View {
     @State private var viewModel: PlayerViewModel
     @State private var subscriptionVM: SubscriptionViewModel
     @State private var gradientAnimator = GradientAnimator()
+    @State private var motionManager = MotionManager()
     @State private var pulsateAnimation = false
     @State private var isInterfaceVisible = false
 
@@ -51,9 +52,11 @@ struct PlayerView: View {
         }
         .task {
             viewModel.startObserving()
+            motionManager.start()
         }
         .onDisappear {
             viewModel.stopObserving()
+            motionManager.stop()
         }
         .onAppear {
             withAnimation {
@@ -91,14 +94,27 @@ struct PlayerView: View {
                 backgroundAnimationOverlay
             }
         } else {
-            LinearGradient(
-                gradient: Gradient(colors: [
-                    viewModel.artworkShadowColor.opacity(Constants.Opacity.backgroundArtwork),
-                    AppColors.backgroundPrimary
-                ]),
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            ZStack {
+                // Blurred artwork as background
+                Image(uiImage: viewModel.artworkImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .blur(radius: 60)
+                    .scaleEffect(1.3)
+                    .clipped()
+                    .id(viewModel.artworkId)
+
+                // Dark overlay for readability
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.black.opacity(0.3),
+                        Color.black.opacity(0.7)
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
             .animation(.easeInOut(duration: Constants.Animation.backgroundTransition), value: viewModel.artworkId)
         }
     }
@@ -155,7 +171,8 @@ struct PlayerView: View {
                     isPlaying: viewModel.isPlaying,
                     isDefaultArtwork: viewModel.isDefaultArtworkShown,
                     pulsateAnimation: $pulsateAnimation,
-                    shadowColor: viewModel.artworkShadowColor
+                    shadowColor: viewModel.artworkShadowColor,
+                    motionManager: motionManager
                 )
 
                 Spacer()

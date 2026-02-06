@@ -27,6 +27,7 @@ struct PlayerControlsView: View {
                         .scaleEffect(Constants.Layout.bufferingSpinnerScale)
                 } else {
                     Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .contentTransition(.symbolEffect(.replace.downUp.byLayer))
                         .font(AppFonts.playIcon)
                         .foregroundColor(AppColors.buttonPrimaryFg)
                         .offset(x: isPlaying ? 0 : Constants.Layout.playIconOffset)

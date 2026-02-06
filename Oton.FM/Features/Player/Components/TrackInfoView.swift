@@ -15,13 +15,15 @@ struct TrackInfoView: View {
                         .lineLimit(2)
                         .transition(.opacity.combined(with: .move(edge: .bottom)))
                 } else if isPlaying && !trackTitle.isEmpty {
-                    Text(trackTitle)
-                        .id(trackTitle)
-                        .font(AppFonts.trackTitle)
-                        .foregroundColor(AppColors.textPrimary)
-                        .lineLimit(2)
-                        .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    TypewriterText(
+                        text: trackTitle,
+                        font: AppFonts.trackTitle,
+                        color: AppColors.textPrimary
+                    )
+                    .id(trackTitle)
+                    .lineLimit(2)
+                    .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
+                    .transition(.opacity.combined(with: .move(edge: .bottom)))
                 } else {
                     Text("OTON FM")
                         .font(AppFonts.trackTitle)
@@ -36,14 +38,13 @@ struct TrackInfoView: View {
             .animation(.easeInOut(duration: Constants.Animation.textTransition), value: isPlaying)
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            if !nextTrackTitle.isEmpty {
-                MarqueeText(
-                    text: "Сотору: \(nextTrackTitle)",
-                    font: AppFonts.nextTrackSubtitle,
-                    color: AppColors.textTertiary
-                )
-                .transition(.opacity.combined(with: .move(edge: .bottom)))
-            }
+            // Always reserve space for the next track line to prevent layout jumps
+            MarqueeText(
+                text: nextTrackTitle.isEmpty ? " " : "Сотору: \(nextTrackTitle)",
+                font: AppFonts.nextTrackSubtitle,
+                color: AppColors.textTertiary
+            )
+            .opacity(nextTrackTitle.isEmpty ? 0 : 1)
         }
         .animation(.easeInOut(duration: Constants.Animation.textTransition), value: nextTrackTitle)
         .padding(.horizontal, UIScreen.main.bounds.width * Constants.Layout.horizontalPaddingRatio)
@@ -138,6 +139,57 @@ private struct MarqueeText: View {
         withAnimation(nil) { offset = 0 }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             beginScrolling()
+        }
+    }
+}
+
+// MARK: - Typewriter Text
+
+/// Reveals text character by character with a typewriter effect.
+private struct TypewriterText: View {
+    let text: String
+    let font: Font
+    let color: Color
+
+    @State private var visibleCount: Int = 0
+    @State private var timer: Timer?
+
+    private let charDelay: TimeInterval = 0.04
+
+    var body: some View {
+        Text(text.prefix(visibleCount) + (visibleCount < text.count ? " " : ""))
+            .font(font)
+            .foregroundColor(color)
+            .onAppear {
+                startTyping()
+            }
+            .onDisappear {
+                timer?.invalidate()
+                timer = nil
+            }
+            .onChange(of: text) { _, _ in
+                restartTyping()
+            }
+    }
+
+    private func startTyping() {
+        visibleCount = 0
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: charDelay, repeats: true) { t in
+            if visibleCount < text.count {
+                visibleCount += 1
+            } else {
+                t.invalidate()
+            }
+        }
+    }
+
+    private func restartTyping() {
+        timer?.invalidate()
+        timer = nil
+        visibleCount = 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            startTyping()
         }
     }
 }
