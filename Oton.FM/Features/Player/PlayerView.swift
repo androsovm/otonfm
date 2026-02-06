@@ -165,7 +165,8 @@ struct PlayerView: View {
                     TrackInfoView(
                         isConnecting: viewModel.isConnecting,
                         isPlaying: viewModel.isPlaying,
-                        trackTitle: viewModel.trackTitle
+                        trackTitle: viewModel.trackTitle,
+                        nextTrackTitle: viewModel.nextTrackTitle
                     )
 
                     PlayerControlsView(

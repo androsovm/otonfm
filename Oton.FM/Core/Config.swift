@@ -12,6 +12,9 @@ enum Config {
     /// Status API endpoint for current track metadata.
     static let radioStatusURL = "https://public.radio.co/stations/s696f24a77/status"
 
+    /// Next track API endpoint.
+    static let radioNextTrackURL = "https://public.radio.co/stations/s696f24a77/next"
+
     /// Radio.co station identifier.
     static let radioStationID = "s696f24a77"
 }

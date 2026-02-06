@@ -48,7 +48,7 @@ fastlane/test_output
 *.swo
 
 # Project specific
-Oton.FM/Config.swift
+Oton.FM/Core/Config.swift
 # Keep ConfigExample.swift - это шаблон
 *.p12
 *.cer

@@ -26,3 +26,12 @@ struct RadioStatusResponse: Codable, Sendable {
         case currentTrack = "current_track"
     }
 }
+
+/// Top-level response from the radio.co next track endpoint.
+struct NextTrackResponse: Codable, Sendable {
+    let nextTrack: TrackInfo?
+
+    enum CodingKeys: String, CodingKey {
+        case nextTrack = "next_track"
+    }
+}

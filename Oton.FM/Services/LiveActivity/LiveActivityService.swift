@@ -1,5 +1,8 @@
 import ActivityKit
 import Foundation
+import os
+
+private let log = Logger(subsystem: "fm.oton", category: "LiveActivity")
 
 /// Production Live Activity service using ActivityKit.
 /// Manages a single NowPlayingAttributes Live Activity.
@@ -25,7 +28,7 @@ final class LiveActivityService: LiveActivityServiceProtocol {
             )
             currentActivity = activity
         } catch {
-            print("[LiveActivityService] Failed to start activity: \(error)")
+            log.error("failed to start activity: \(error.localizedDescription)")
         }
     }
 

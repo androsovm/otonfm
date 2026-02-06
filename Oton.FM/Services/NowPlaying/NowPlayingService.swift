@@ -4,17 +4,24 @@ import MediaPlayer
 /// Production Now Playing service managing the lock screen / Control Center info.
 final class NowPlayingService: NowPlayingServiceProtocol {
 
+    private var playTarget: Any?
+    private var pauseTarget: Any?
+
     func configure(playAction: @escaping () -> Void, pauseAction: @escaping () -> Void) {
         let commandCenter = MPRemoteCommandCenter.shared()
 
+        // Remove previous handlers to avoid stacking duplicates
+        if let target = playTarget { commandCenter.playCommand.removeTarget(target) }
+        if let target = pauseTarget { commandCenter.pauseCommand.removeTarget(target) }
+
         commandCenter.playCommand.isEnabled = true
-        commandCenter.playCommand.addTarget { _ in
+        playTarget = commandCenter.playCommand.addTarget { _ in
             playAction()
             return .success
         }
 
         commandCenter.pauseCommand.isEnabled = true
-        commandCenter.pauseCommand.addTarget { _ in
+        pauseTarget = commandCenter.pauseCommand.addTarget { _ in
             pauseAction()
             return .success
         }

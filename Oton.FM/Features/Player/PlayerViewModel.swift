@@ -1,5 +1,8 @@
 import SwiftUI
 import AVFoundation
+import os
+
+private let log = Logger(subsystem: "fm.oton", category: "PlayerVM")
 
 /// Coordinates all services and exposes UI-ready state for PlayerView.
 @Observable
@@ -13,6 +16,7 @@ final class PlayerViewModel {
     var artworkId: UUID = UUID()
     var isDefaultArtworkShown: Bool = true
     var artworkShadowColor: Color = .black
+    var nextTrackTitle: String = ""
 
     var isPlaying: Bool { displayState == .playing }
     var isConnecting: Bool { displayState == .connecting }
@@ -53,6 +57,7 @@ final class PlayerViewModel {
     private var lastTrackTitle = ""
     private var stateTask: Task<Void, Never>?
     private var metadataTask: Task<Void, Never>?
+    private var nextTrackTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -103,6 +108,7 @@ final class PlayerViewModel {
     func stopObserving() {
         stateTask?.cancel()
         metadataTask?.cancel()
+        nextTrackTask?.cancel()
     }
 
     // MARK: - Actions
@@ -141,6 +147,8 @@ final class PlayerViewModel {
     private func pause() {
         audioEngine.pause()
         nowPlayingService.clear()
+        nextTrackTask?.cancel()
+        nextTrackTitle = ""
     }
 
     /// Compressed artwork data for Live Activity (small JPEG to stay under 4KB limit).
@@ -157,6 +165,7 @@ final class PlayerViewModel {
 
     @MainActor
     private func handleAudioState(_ state: AudioState) {
+        log.debug("audioState: \(String(describing: state))")
         switch state {
         case .idle:
             displayState = .idle
@@ -181,28 +190,36 @@ final class PlayerViewModel {
     private func handleMetadata(_ items: [AVMetadataItem]) {
         guard let title = metadataService.trackTitle(from: items),
               !title.isEmpty,
-              title != trackTitle else { return }
+              title != trackTitle else {
+            let raw = items.compactMap { $0.stringValue ?? ($0.value as? String) }.joined(separator: ", ")
+            log.debug("handleMetadata: skipped (same/empty/nil) raw=[\(raw)] current=\"\(self.trackTitle)\"")
+            return
+        }
 
+        log.info("▶ NEW TRACK: \"\(title)\"")
         trackTitle = title
         lastTrackTitle = title
         hapticService.playTrackChanged()
 
         if title.contains("OtonFM") {
+            log.info("  → OtonFM jingle, loading station logo")
             let result = artworkService.loadStationLogo()
             applyArtwork(result)
         } else {
             Task { @MainActor in
-                let track = TrackInfo(title: title, artworkUrl: nil, artworkUrlLarge: nil)
-                // Fetch from API
                 do {
                     let apiTrack = try await metadataService.fetchCurrentTrack()
+                    log.info("  API track: \"\(apiTrack.title)\" artwork=\(apiTrack.bestArtworkUrl ?? "nil")")
                     // Validate title match
                     if apiTrack.title == title || apiTrack.title == lastTrackTitle {
                         let result = await artworkService.loadArtwork(for: apiTrack)
+                        log.info("  artwork loaded: type=\(String(describing: result.type))")
                         applyArtwork(result)
+                    } else {
+                        log.warning("  API title mismatch: API=\"\(apiTrack.title)\" ICY=\"\(title)\" last=\"\(self.lastTrackTitle)\"")
                     }
                 } catch {
-                    // Artwork fetch failed; keep current artwork
+                    log.error("  fetchCurrentTrack failed: \(error.localizedDescription)")
                 }
             }
         }
@@ -218,6 +235,29 @@ final class PlayerViewModel {
         if isPlaying {
             liveActivityService.update(trackTitle: title, isPlaying: true, artworkData: liveActivityArtworkData)
         }
+
+        // Fetch next track info
+        fetchNextTrackInfo()
+    }
+
+    private func fetchNextTrackInfo() {
+        nextTrackTask?.cancel()
+        nextTrackTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let nextTrack = try await self.metadataService.fetchNextTrack()
+                guard !Task.isCancelled else {
+                    log.debug("fetchNextTrack: cancelled")
+                    return
+                }
+                log.info("  next track: \"\(nextTrack.title)\"")
+                self.nextTrackTitle = nextTrack.title
+            } catch {
+                guard !Task.isCancelled else { return }
+                log.warning("  fetchNextTrack failed: \(error.localizedDescription)")
+                self.nextTrackTitle = ""
+            }
+        }
     }
 
     @MainActor
@@ -225,15 +265,17 @@ final class PlayerViewModel {
         artworkImage = result.image
         artworkId = UUID()
 
+        let prevDefault = isDefaultArtworkShown
         switch result.type {
         case .realArtwork:
             hasLoadedRealArtworkOnce = true
             isDefaultArtworkShown = false
         case .stationLogo:
-            isDefaultArtworkShown = !hasLoadedRealArtworkOnce
+            isDefaultArtworkShown = true
         case .defaultArtwork:
             isDefaultArtworkShown = true
         }
+        log.info("  applyArtwork: type=\(String(describing: result.type)) isDefault=\(self.isDefaultArtworkShown) (was \(prevDefault))")
 
         if let avg = result.averageColor {
             artworkShadowColor = Color(avg)

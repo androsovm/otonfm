@@ -15,6 +15,8 @@ enum AppFonts {
     static let playIcon = Font.system(size: 30, weight: .bold)
     /// Gift icon: system 18pt bold.
     static let giftIcon = Font.system(size: 18, weight: .bold)
+    /// Next track subtitle: system 14pt regular.
+    static let nextTrackSubtitle = Font.system(size: 14, weight: .regular)
 }
 
 /// Rounded font provider for RevenueCat PaywallView.

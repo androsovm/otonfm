@@ -7,4 +7,7 @@ protocol MetadataServiceProtocol: Sendable {
 
     /// Fetch current track info from the radio.co status API.
     func fetchCurrentTrack() async throws -> TrackInfo
+
+    /// Fetch next track info from the radio.co next track API.
+    func fetchNextTrack() async throws -> TrackInfo
 }

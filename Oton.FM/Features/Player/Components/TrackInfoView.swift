@@ -5,9 +5,10 @@ struct TrackInfoView: View {
     let isConnecting: Bool
     let isPlaying: Bool
     let trackTitle: String
+    let nextTrackTitle: String
 
     var body: some View {
-        VStack(alignment: .leading) {
+        VStack(alignment: .leading, spacing: 4) {
             ZStack(alignment: .leading) {
                 if isConnecting {
                     ConnectingText()
@@ -34,8 +35,109 @@ struct TrackInfoView: View {
             .animation(.easeInOut(duration: Constants.Animation.textTransition), value: trackTitle)
             .animation(.easeInOut(duration: Constants.Animation.textTransition), value: isPlaying)
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !nextTrackTitle.isEmpty {
+                MarqueeText(
+                    text: "Сотору: \(nextTrackTitle)",
+                    font: AppFonts.nextTrackSubtitle,
+                    color: AppColors.textTertiary
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
         }
+        .animation(.easeInOut(duration: Constants.Animation.textTransition), value: nextTrackTitle)
         .padding(.horizontal, UIScreen.main.bounds.width * Constants.Layout.horizontalPaddingRatio)
         .offset(y: Constants.Layout.trackInfoOffset)
+    }
+}
+
+// MARK: - Preference Key
+
+private struct TextWidthKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+// MARK: - Marquee Text
+
+/// Horizontally scrolling text when content exceeds available width.
+private struct MarqueeText: View {
+    let text: String
+    let font: Font
+    let color: Color
+
+    @State private var textWidth: CGFloat = 0
+    @State private var containerWidth: CGFloat = 0
+    @State private var offset: CGFloat = 0
+
+    private let gap: CGFloat = 60
+    private let speed: CGFloat = 25.0
+
+    private var needsScroll: Bool {
+        textWidth > containerWidth && containerWidth > 0
+    }
+
+    var body: some View {
+        GeometryReader { geo in
+            HStack(spacing: gap) {
+                marqueeLabel
+                if needsScroll {
+                    marqueeLabel
+                }
+            }
+            .offset(x: offset)
+            .onAppear {
+                containerWidth = geo.size.width
+                beginScrolling()
+            }
+            .onChange(of: text) { _, _ in
+                resetAndScroll()
+            }
+        }
+        .frame(height: 18)
+        .clipped()
+        .overlay {
+            Text(text)
+                .font(font)
+                .fixedSize()
+                .hidden()
+                .background(
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: TextWidthKey.self, value: proxy.size.width)
+                    }
+                )
+        }
+        .onPreferenceChange(TextWidthKey.self) { width in
+            let changed = textWidth != width
+            textWidth = width
+            if changed { resetAndScroll() }
+        }
+    }
+
+    private var marqueeLabel: some View {
+        Text(text)
+            .font(font)
+            .foregroundColor(color)
+            .fixedSize(horizontal: true, vertical: false)
+    }
+
+    private func beginScrolling() {
+        guard needsScroll else { return }
+        let distance = textWidth + gap
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            guard needsScroll else { return }
+            withAnimation(.linear(duration: distance / speed).repeatForever(autoreverses: false)) {
+                offset = -distance
+            }
+        }
+    }
+
+    private func resetAndScroll() {
+        withAnimation(nil) { offset = 0 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            beginScrolling()
+        }
     }
 }

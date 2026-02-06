@@ -8,17 +8,19 @@ enum Constants {
 
     enum Audio {
         /// Preferred forward buffer duration for AVPlayer (seconds).
-        static let bufferDuration: TimeInterval = 10.0
+        static let bufferDuration: TimeInterval = 30.0
         /// How often to check buffer status (seconds).
         static let bufferCheckInterval: TimeInterval = 0.5
-        /// Delay before reconnection attempt (seconds).
-        static let reconnectDelay: TimeInterval = 2.0
+        /// Base delay for first reconnection attempt (seconds). Grows exponentially.
+        static let reconnectBaseDelay: TimeInterval = 2.0
         /// Maximum automatic reconnect attempts before surfacing error.
-        static let maxReconnectAttempts = 3
+        static let maxReconnectAttempts = 7
         /// Maximum artwork download retries with progressive back-off.
         static let maxArtworkRetries = 3
         /// HTTP request timeout (seconds).
         static let apiTimeout: TimeInterval = 10.0
+        /// Delay before auto-retry after network recovery (seconds).
+        static let networkRecoveryDelay: TimeInterval = 1.5
     }
 
     // MARK: - Animation Timings

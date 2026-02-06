@@ -1,5 +1,8 @@
 import Foundation
 import RevenueCat
+import os
+
+private let log = Logger(subsystem: "fm.oton", category: "Subscription")
 
 /// Production subscription service wrapping RevenueCat.
 final class SubscriptionService: SubscriptionServiceProtocol {
@@ -27,7 +30,7 @@ final class SubscriptionService: SubscriptionServiceProtocol {
             isPremium = hasPremium
             return hasPremium
         } catch {
-            print("[SubscriptionService] Failed to fetch customer info: \(error)")
+            log.error("failed to fetch customer info: \(error.localizedDescription)")
             return false
         }
     }
