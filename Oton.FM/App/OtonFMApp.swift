@@ -25,6 +25,9 @@ struct OtonFMApp: App {
                     subscriptionVM: SubscriptionViewModel(
                         subscriptionService: environment.subscriptionService,
                         hapticService: environment.hapticService
+                    ),
+                    chatViewModel: ChatViewModel(
+                        chatService: environment.chatService
                     )
                 )
             }

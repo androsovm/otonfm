@@ -5,23 +5,35 @@ import RevenueCatUI
 struct PlayerView: View {
     @State private var viewModel: PlayerViewModel
     @State private var subscriptionVM: SubscriptionViewModel
+    @State private var chatViewModel: ChatViewModel
     @State private var gradientAnimator = GradientAnimator()
     @State private var motionManager = MotionManager()
     @State private var isInterfaceVisible = false
+    @State private var isChatSheetPresented = false
 
     init(viewModel: PlayerViewModel) {
         _viewModel = State(initialValue: viewModel)
-        // SubscriptionViewModel is created with stubs here;
-        // the real wiring happens from the environment in OtonFMApp.
         _subscriptionVM = State(initialValue: SubscriptionViewModel(
             subscriptionService: StubSubscriptionService(),
             hapticService: StubHapticService()
+        ))
+        _chatViewModel = State(initialValue: ChatViewModel(
+            chatService: StubChatService()
         ))
     }
 
     init(viewModel: PlayerViewModel, subscriptionVM: SubscriptionViewModel) {
         _viewModel = State(initialValue: viewModel)
         _subscriptionVM = State(initialValue: subscriptionVM)
+        _chatViewModel = State(initialValue: ChatViewModel(
+            chatService: StubChatService()
+        ))
+    }
+
+    init(viewModel: PlayerViewModel, subscriptionVM: SubscriptionViewModel, chatViewModel: ChatViewModel) {
+        _viewModel = State(initialValue: viewModel)
+        _subscriptionVM = State(initialValue: subscriptionVM)
+        _chatViewModel = State(initialValue: chatViewModel)
     }
 
     var body: some View {
@@ -51,10 +63,12 @@ struct PlayerView: View {
         }
         .task {
             viewModel.startObserving()
+            chatViewModel.startObserving()
             motionManager.start()
         }
         .onDisappear {
             viewModel.stopObserving()
+            chatViewModel.stopObserving()
             motionManager.stop()
         }
         .onAppear {
@@ -75,6 +89,13 @@ struct PlayerView: View {
             }
         }
         .preferredColorScheme(.dark)
+        .sheet(isPresented: $isChatSheetPresented) {
+            ChatView(viewModel: chatViewModel)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(.ultraThinMaterial)
+                .presentationBackgroundInteraction(.enabled(upThrough: .medium))
+        }
     }
 
     // MARK: - Background
@@ -90,9 +111,6 @@ struct PlayerView: View {
             }
         } else {
             ZStack {
-                // Blurred artwork as background
-                // Color.clear defines the layout size (= screen),
-                // Image renders as overlay without inflating the parent ZStack.
                 Color.clear
                     .overlay(
                         Image(uiImage: viewModel.artworkImage)
@@ -104,7 +122,6 @@ struct PlayerView: View {
                     .clipped()
                     .id(viewModel.artworkId)
 
-                // Dark overlay for readability
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color.black.opacity(0.3),
@@ -152,9 +169,14 @@ struct PlayerView: View {
     private var mainInterface: some View {
         ZStack {
             VStack(spacing: 0) {
-                // Top bar: share + gift buttons
+                // Top bar: share + admin status + gift buttons
                 HStack {
                     shareButton
+                    Spacer()
+                    if let status = chatViewModel.adminStatus {
+                        AdminStatusBanner(status: status)
+                            .transition(.opacity)
+                    }
                     Spacer()
                     giftButton
                 }
@@ -175,7 +197,7 @@ struct PlayerView: View {
 
                 Spacer()
 
-                // Bottom: track info + controls
+                // Bottom: track info + controls + chat pill
                 VStack(spacing: Constants.Layout.bottomSpacing) {
                     TrackInfoView(
                         isConnecting: viewModel.isConnecting,
@@ -190,6 +212,12 @@ struct PlayerView: View {
                         onToggle: viewModel.togglePlayback,
                         onTouchDown: viewModel.touchDown,
                         onTouchUp: viewModel.touchUp
+                    )
+
+                    ChatPillBar(
+                        lastMessagePreview: chatViewModel.messages.last?.text,
+                        unreadCount: chatViewModel.unreadCount,
+                        onTap: { isChatSheetPresented = true }
                     )
                     .padding(.bottom, Constants.Layout.bottomSpacing)
                 }

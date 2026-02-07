@@ -172,6 +172,43 @@ enum Constants {
         static let spacing: CGFloat = 2
     }
 
+    // MARK: - Chat
+
+    enum Chat {
+        /// Chat pill bar height.
+        static let pillHeight: CGFloat = 40
+        /// Chat pill bar width ratio relative to screen width.
+        static let pillWidthRatio: CGFloat = 0.65
+        /// Unread badge size.
+        static let badgeSize: CGFloat = 8
+        /// Chat input bar height.
+        static let inputHeight: CGFloat = 44
+        /// Send button size.
+        static let sendButtonSize: CGFloat = 32
+        /// Chat message horizontal padding.
+        static let messageHorizontalPadding: CGFloat = 16
+        /// Chat message vertical padding.
+        static let messageVerticalPadding: CGFloat = 4
+        /// Drag indicator width.
+        static let dragIndicatorWidth: CGFloat = 36
+        /// Drag indicator height.
+        static let dragIndicatorHeight: CGFloat = 5
+        /// Song request left border width.
+        static let songRequestBorderWidth: CGFloat = 3
+        /// Admin announcement background opacity.
+        static let adminBgOpacity: Double = 0.15
+        /// Admin banner border height.
+        static let adminBannerBorderHeight: CGFloat = 2
+        /// Chat corner radius.
+        static let cornerRadius: CGFloat = 12
+        /// Premium diamond icon size.
+        static let premiumIconSize: CGFloat = 10
+        /// Chat header height.
+        static let headerHeight: CGFloat = 56
+        /// Input field corner radius.
+        static let inputCornerRadius: CGFloat = 22
+    }
+
     // MARK: - Splash
 
     enum Splash {

@@ -12,6 +12,7 @@ final class AppEnvironment {
     let subscriptionService: any SubscriptionServiceProtocol
     let hapticService: any HapticServiceProtocol
     let networkClient: any NetworkClientProtocol
+    let chatService: any ChatServiceProtocol
 
     /// Production initializer -- creates real service instances.
     init() {
@@ -23,6 +24,7 @@ final class AppEnvironment {
         self.nowPlayingService = NowPlayingService()
         self.subscriptionService = SubscriptionService()
         self.hapticService = HapticService()
+        self.chatService = StubChatService()
     }
 
     /// Test initializer -- inject mock services.
@@ -33,7 +35,8 @@ final class AppEnvironment {
         nowPlayingService: any NowPlayingServiceProtocol,
         subscriptionService: any SubscriptionServiceProtocol,
         hapticService: any HapticServiceProtocol,
-        networkClient: any NetworkClientProtocol
+        networkClient: any NetworkClientProtocol,
+        chatService: any ChatServiceProtocol = StubChatService()
     ) {
         self.audioEngine = audioEngine
         self.metadataService = metadataService
@@ -42,5 +45,6 @@ final class AppEnvironment {
         self.subscriptionService = subscriptionService
         self.hapticService = hapticService
         self.networkClient = networkClient
+        self.chatService = chatService
     }
 }
