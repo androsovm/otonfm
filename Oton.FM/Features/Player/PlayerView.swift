@@ -217,7 +217,7 @@ struct PlayerView: View {
                     )
 
                     ChatPillBar(
-                        lastMessagePreview: chatViewModel.messages.last?.text,
+                        lastMessagePreview: chatViewModel.pillPreview,
                         unreadCount: chatViewModel.unreadCount,
                         onTap: { isChatSheetPresented = true }
                     )

@@ -3,11 +3,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Messages: read by any authenticated user, create with validation
+    // Messages: read by any authenticated user, create only for non-anonymous users
     match /messages/{messageId} {
       allow read: if request.auth != null;
 
       allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.type in ['userMessage', 'songRequest']
         && request.resource.data.text is string
@@ -17,16 +18,18 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Users: read/write own document only, cannot change isAdmin/isPremium
+    // Users: read own document, write only for non-anonymous users
     match /users/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
 
       allow create: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.auth.uid == userId
         && request.resource.data.isAdmin == false
         && request.resource.data.isPremium == false;
 
       allow update: if request.auth != null
+        && request.auth.token.firebase.sign_in_provider != 'anonymous'
         && request.auth.uid == userId
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isPremium']));
 

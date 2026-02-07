@@ -54,3 +54,4 @@ Oton.FM/Core/Config.swift
 *.cer
 *.certSigningRequest
 *.mobileprovision
+GoogleService-Info.plist

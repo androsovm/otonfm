@@ -46,12 +46,10 @@ final class ChatViewModel {
 
     /// Start observing chat streams. Call from .onAppear / .task.
     func startObserving() {
-        // Sign in silently in background
-        Task {
-            _ = try? await authService.signInAnonymously()
-        }
-
+        // Sign in first, then start Firestore listeners
         Task { @MainActor in
+            _ = try? await authService.signInAnonymously()
+
             let recent = await chatService.fetchRecentMessages()
             messages = recent
             pinnedAnnouncement = recent.first { $0.type == .adminAnnouncement && $0.isPinned }
@@ -94,7 +92,7 @@ final class ChatViewModel {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
 
-        if !authService.isOnboarded {
+        if !authService.canWrite {
             pendingAction = .message(text)
             inputText = ""
             showOnboarding = true
@@ -110,7 +108,7 @@ final class ChatViewModel {
     }
 
     func sendSongRequest(title: String, artist: String) {
-        if !authService.isOnboarded {
+        if !authService.canWrite {
             pendingAction = .songRequest(title: title, artist: artist)
             showOnboarding = true
             return
@@ -158,6 +156,14 @@ final class ChatViewModel {
                 await chatService.sendSongRequest(title: title, artist: artist)
             }
         }
+    }
+
+    /// Preview text for the pill bar. Returns nil if last message is older than 12 hours.
+    var pillPreview: String? {
+        guard let last = messages.last else { return nil }
+        let age = Date().timeIntervalSince(last.timestamp)
+        guard age < 12 * 3600 else { return nil }
+        return last.text
     }
 
     func markAsRead() {

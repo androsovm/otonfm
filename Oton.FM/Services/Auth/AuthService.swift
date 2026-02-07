@@ -2,7 +2,8 @@ import Foundation
 import FirebaseAuth
 import FirebaseFirestore
 
-/// Production auth service using Firebase Anonymous Authentication.
+/// Production auth service using Firebase Authentication.
+/// Supports anonymous sign-in and Apple Sign-In linking.
 /// Stores profile locally in UserDefaults and syncs to Firestore.
 final class AuthService: AuthServiceProtocol {
 
@@ -21,6 +22,15 @@ final class AuthService: AuthServiceProtocol {
 
     var isOnboarded: Bool {
         !displayName.isEmpty
+    }
+
+    var isAnonymous: Bool {
+        guard let user = Auth.auth().currentUser else { return true }
+        return !user.providerData.contains { $0.providerID == "apple.com" }
+    }
+
+    var canWrite: Bool {
+        !isAnonymous && isOnboarded
     }
 
     var displayName: String {
@@ -42,6 +52,34 @@ final class AuthService: AuthServiceProtocol {
         }
         let result = try await Auth.auth().signInAnonymously()
         return result.user.uid
+    }
+
+    func signInWithApple(idToken: String, nonce: String, fullName: PersonNameComponents?) async throws {
+        let credential = OAuthProvider.appleCredential(
+            withIDToken: idToken,
+            rawNonce: nonce,
+            fullName: fullName
+        )
+
+        // Try linking anonymous account to Apple credential
+        if let currentUser = Auth.auth().currentUser, currentUser.isAnonymous {
+            do {
+                try await currentUser.link(with: credential)
+            } catch let error as NSError where error.code == AuthErrorCode.credentialAlreadyInUse.rawValue {
+                // Apple account already exists — sign in directly
+                try await Auth.auth().signIn(with: credential)
+            }
+        } else {
+            try await Auth.auth().signIn(with: credential)
+        }
+
+        // Pre-fill display name from Apple if provided
+        if let givenName = fullName?.givenName, !givenName.isEmpty {
+            let current = UserDefaults.standard.string(forKey: Keys.displayName) ?? ""
+            if current.isEmpty {
+                UserDefaults.standard.set(givenName, forKey: Keys.displayName)
+            }
+        }
     }
 
     // MARK: - Profile
