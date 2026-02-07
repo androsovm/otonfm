@@ -49,12 +49,12 @@ struct ArtworkView: View {
                 .rotation3DEffect(
                     .degrees(motionManager?.pitch ?? 0),
                     axis: (x: -1, y: 0, z: 0),
-                    perspective: 0.5
+                    perspective: 0.8
                 )
                 .rotation3DEffect(
                     .degrees(motionManager?.roll ?? 0),
                     axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.5
+                    perspective: 0.8
                 )
         }
         // Floating animation: slow vertical oscillation

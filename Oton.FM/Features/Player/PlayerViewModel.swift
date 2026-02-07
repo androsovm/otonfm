@@ -49,8 +49,6 @@ final class PlayerViewModel {
     private let artworkService: any ArtworkServiceProtocol
     private let nowPlayingService: any NowPlayingServiceProtocol
     private let hapticService: any HapticServiceProtocol
-    private let liveActivityService: any LiveActivityServiceProtocol
-
     // MARK: - Internal state
 
     private var hasLoadedRealArtworkOnce = false
@@ -66,15 +64,13 @@ final class PlayerViewModel {
         metadataService: any MetadataServiceProtocol,
         artworkService: any ArtworkServiceProtocol,
         nowPlayingService: any NowPlayingServiceProtocol,
-        hapticService: any HapticServiceProtocol,
-        liveActivityService: any LiveActivityServiceProtocol = StubLiveActivityService()
+        hapticService: any HapticServiceProtocol
     ) {
         self.audioEngine = audioEngine
         self.metadataService = metadataService
         self.artworkService = artworkService
         self.nowPlayingService = nowPlayingService
         self.hapticService = hapticService
-        self.liveActivityService = liveActivityService
         self.artworkImage = artworkService.defaultArtwork
     }
 
@@ -151,38 +147,22 @@ final class PlayerViewModel {
         nextTrackTitle = ""
     }
 
-    /// Compressed artwork data for Live Activity (small JPEG to stay under 4KB limit).
-    private var liveActivityArtworkData: Data? {
-        guard !isDefaultArtworkShown else { return nil }
-        // Live Activity content state has a ~4KB limit; compress to small thumbnail
-        let size = CGSize(width: 80, height: 80)
-        UIGraphicsBeginImageContextWithOptions(size, false, 1.0)
-        artworkImage.draw(in: CGRect(origin: .zero, size: size))
-        let thumbnail = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
-        return thumbnail?.jpegData(compressionQuality: 0.5)
-    }
-
     @MainActor
     private func handleAudioState(_ state: AudioState) {
         log.debug("audioState: \(String(describing: state))")
         switch state {
         case .idle:
             displayState = .idle
-            liveActivityService.end()
         case .connecting:
             displayState = .connecting
         case .playing:
             displayState = .playing
-            liveActivityService.update(trackTitle: trackTitle.isEmpty ? "Oton FM" : trackTitle, isPlaying: true, artworkData: liveActivityArtworkData)
         case .buffering:
             displayState = .buffering
         case .paused:
             displayState = .paused
-            liveActivityService.update(trackTitle: trackTitle.isEmpty ? "Oton FM" : trackTitle, isPlaying: false, artworkData: liveActivityArtworkData)
         case .error(let err):
             displayState = .error(err)
-            liveActivityService.end()
         }
     }
 
@@ -230,11 +210,6 @@ final class PlayerViewModel {
             artwork: artworkImage,
             isLiveStream: true
         )
-
-        // Update Live Activity with new track title
-        if isPlaying {
-            liveActivityService.update(trackTitle: title, isPlaying: true, artworkData: liveActivityArtworkData)
-        }
 
         // Fetch next track info
         fetchNextTrackInfo()
@@ -287,14 +262,5 @@ final class PlayerViewModel {
             artwork: artworkImage,
             isLiveStream: true
         )
-
-        // Update Live Activity with new artwork
-        if isPlaying {
-            liveActivityService.update(
-                trackTitle: trackTitle.isEmpty ? "Oton FM" : trackTitle,
-                isPlaying: true,
-                artworkData: liveActivityArtworkData
-            )
-        }
     }
 }

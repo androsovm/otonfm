@@ -13,7 +13,7 @@ struct FallingSnowView: View {
         let phase: Double
     }
 
-    @State private var snowflakes: [Snowflake] = (0..<30).map { i in
+    @State private var snowflakes: [Snowflake] = (0..<60).map { i in
         let category = i % 3
         let size: CGFloat
         let speed: Double

@@ -20,8 +20,7 @@ struct OtonFMApp: App {
                         metadataService: environment.metadataService,
                         artworkService: environment.artworkService,
                         nowPlayingService: environment.nowPlayingService,
-                        hapticService: environment.hapticService,
-                        liveActivityService: environment.liveActivityService
+                        hapticService: environment.hapticService
                     ),
                     subscriptionVM: SubscriptionViewModel(
                         subscriptionService: environment.subscriptionService,
