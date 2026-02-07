@@ -20,7 +20,7 @@ struct PlayerControlsView: View {
                         height: Constants.Layout.playButtonSize
                     )
 
-                if isBuffering && isPlaying {
+                if isBuffering {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: AppColors.buttonPrimaryFg))
                         .scaleEffect(Constants.Layout.bufferingSpinnerScale)
