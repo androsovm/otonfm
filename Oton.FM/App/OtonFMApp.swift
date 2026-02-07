@@ -11,11 +11,21 @@ struct OtonFMApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @State private var environment = AppEnvironment()
     @State private var isSplashActive = true
+    @AppStorage("hasSeenNotificationWelcome") private var hasSeenNotificationWelcome = false
 
     var body: some Scene {
         WindowGroup {
             if isSplashActive {
                 SplashView(isActive: $isSplashActive)
+            } else if !hasSeenNotificationWelcome {
+                WelcomeNotificationView(
+                    notificationService: environment.notificationService,
+                    onComplete: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            hasSeenNotificationWelcome = true
+                        }
+                    }
+                )
             } else {
                 PlayerView(
                     viewModel: PlayerViewModel(
@@ -53,12 +63,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         #endif
         Purchases.configure(withAPIKey: Config.revenueCatAPIKey)
 
-        // Push notifications
+        // Push notification delegates (permission requested via NotificationService)
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
-
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { _, _ in }
-        application.registerForRemoteNotifications()
 
         return true
     }

@@ -14,6 +14,7 @@ final class AppEnvironment {
     let networkClient: any NetworkClientProtocol
     let chatService: any ChatServiceProtocol
     let authService: any AuthServiceProtocol
+    let notificationService: any NotificationServiceProtocol
 
     /// Production initializer -- creates real service instances.
     init() {
@@ -28,6 +29,7 @@ final class AppEnvironment {
         let auth = AuthService()
         self.authService = auth
         self.chatService = FirebaseChatService(authService: auth)
+        self.notificationService = NotificationService()
     }
 
     /// Test initializer -- inject mock services.
@@ -40,7 +42,8 @@ final class AppEnvironment {
         hapticService: any HapticServiceProtocol,
         networkClient: any NetworkClientProtocol,
         chatService: any ChatServiceProtocol = StubChatService(),
-        authService: any AuthServiceProtocol = StubAuthService()
+        authService: any AuthServiceProtocol = StubAuthService(),
+        notificationService: any NotificationServiceProtocol = StubNotificationService()
     ) {
         self.audioEngine = audioEngine
         self.metadataService = metadataService
@@ -51,5 +54,6 @@ final class AppEnvironment {
         self.networkClient = networkClient
         self.chatService = chatService
         self.authService = authService
+        self.notificationService = notificationService
     }
 }
