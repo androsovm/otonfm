@@ -2,17 +2,19 @@ import SwiftUI
 
 /// Text input bar at the bottom of the chat view.
 /// Capsule-shaped text field with a circular send button.
+/// Shows a brief cooldown indicator after sending.
 struct ChatInputBar: View {
     @Binding var text: String
+    let cooldownRemaining: TimeInterval
     let onSend: () -> Void
 
     private var canSend: Bool {
-        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && cooldownRemaining <= 0
     }
 
     var body: some View {
         HStack(spacing: 10) {
-            TextField("", text: $text, prompt: Text("Напишите в эфир...")
+            TextField("", text: $text, prompt: Text(promptText)
                 .foregroundStyle(AppColors.textSecondary))
                 .font(.system(size: 14))
                 .foregroundStyle(AppColors.textPrimary)
@@ -46,5 +48,12 @@ struct ChatInputBar: View {
         }
         .padding(.horizontal, Constants.Chat.messageHorizontalPadding)
         .padding(.vertical, 8)
+    }
+
+    private var promptText: String {
+        if cooldownRemaining > 0 {
+            return "Подождите \(Int(ceil(cooldownRemaining))) сек..."
+        }
+        return "Напишите в эфир..."
     }
 }

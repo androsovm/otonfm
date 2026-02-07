@@ -49,7 +49,11 @@ struct ChatView: View {
                 .overlay(Color.white.opacity(0.08))
 
             // Input bar
-            ChatInputBar(text: $viewModel.inputText, onSend: viewModel.sendMessage)
+            ChatInputBar(
+                text: $viewModel.inputText,
+                cooldownRemaining: viewModel.cooldownRemaining,
+                onSend: viewModel.sendMessage
+            )
         }
         .background(.clear)
         .onAppear {
@@ -58,6 +62,13 @@ struct ChatView: View {
         }
         .onDisappear {
             viewModel.isChatOpen = false
+        }
+        .sheet(isPresented: $viewModel.showOnboarding) {
+            OnboardingView(
+                authService: viewModel.authServiceForOnboarding,
+                onComplete: viewModel.onboardingCompleted
+            )
+            .interactiveDismissDisabled()
         }
     }
 

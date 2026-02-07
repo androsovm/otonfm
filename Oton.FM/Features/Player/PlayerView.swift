@@ -18,7 +18,8 @@ struct PlayerView: View {
             hapticService: StubHapticService()
         ))
         _chatViewModel = State(initialValue: ChatViewModel(
-            chatService: StubChatService()
+            chatService: StubChatService(),
+            authService: StubAuthService()
         ))
     }
 
@@ -26,7 +27,8 @@ struct PlayerView: View {
         _viewModel = State(initialValue: viewModel)
         _subscriptionVM = State(initialValue: subscriptionVM)
         _chatViewModel = State(initialValue: ChatViewModel(
-            chatService: StubChatService()
+            chatService: StubChatService(),
+            authService: StubAuthService()
         ))
     }
 

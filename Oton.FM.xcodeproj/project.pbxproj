@@ -10,6 +10,10 @@
 		103784CD2F3665F0002D38CA /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 103784CC2F3665F0002D38CA /* WidgetKit.framework */; };
 		103784CF2F3665F0002D38CA /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 103784CE2F3665F0002D38CA /* SwiftUI.framework */; };
 		103784DC2F3665F1002D38CA /* OtonFMWidgetsExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 103784CA2F3665F0002D38CA /* OtonFMWidgetsExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		1037859D2F37792F002D38CA /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 1037859C2F37792F002D38CA /* FirebaseAnalytics */; };
+		1037859F2F37792F002D38CA /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 1037859E2F37792F002D38CA /* FirebaseAuth */; };
+		103785A12F37792F002D38CA /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 103785A02F37792F002D38CA /* FirebaseFirestore */; };
+		103785A32F37792F002D38CA /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 103785A22F37792F002D38CA /* FirebaseMessaging */; };
 		109711682DC68B100000226A /* RevenueCat in Frameworks */ = {isa = PBXBuildFile; productRef = 109711672DC68B100000226A /* RevenueCat */; };
 		1097116A2DC68B100000226A /* RevenueCatUI in Frameworks */ = {isa = PBXBuildFile; productRef = 109711692DC68B100000226A /* RevenueCatUI */; };
 /* End PBXBuildFile section */
@@ -111,8 +115,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				103785A32F37792F002D38CA /* FirebaseMessaging in Frameworks */,
 				1097116A2DC68B100000226A /* RevenueCatUI in Frameworks */,
 				109711682DC68B100000226A /* RevenueCat in Frameworks */,
+				1037859D2F37792F002D38CA /* FirebaseAnalytics in Frameworks */,
+				103785A12F37792F002D38CA /* FirebaseFirestore in Frameworks */,
+				1037859F2F37792F002D38CA /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -211,6 +219,10 @@
 			packageProductDependencies = (
 				109711672DC68B100000226A /* RevenueCat */,
 				109711692DC68B100000226A /* RevenueCatUI */,
+				1037859C2F37792F002D38CA /* FirebaseAnalytics */,
+				1037859E2F37792F002D38CA /* FirebaseAuth */,
+				103785A02F37792F002D38CA /* FirebaseFirestore */,
+				103785A22F37792F002D38CA /* FirebaseMessaging */,
 			);
 			productName = Oton.FM;
 			productReference = F006169F2DB88FB4008A40DB /* Oton.FM.app */;
@@ -299,6 +311,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */,
+				1037859B2F37792F002D38CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F00616A02DB88FB4008A40DB /* Products */;
@@ -581,6 +594,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Oton-FM-Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -621,6 +635,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Oton-FM-Info.plist";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.music";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -784,6 +799,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		1037859B2F37792F002D38CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.9.0;
+			};
+		};
 		109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/RevenueCat/purchases-ios-spm.git";
@@ -795,6 +818,26 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		1037859C2F37792F002D38CA /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1037859B2F37792F002D38CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		1037859E2F37792F002D38CA /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1037859B2F37792F002D38CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		103785A02F37792F002D38CA /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1037859B2F37792F002D38CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		103785A22F37792F002D38CA /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1037859B2F37792F002D38CA /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
 		109711672DC68B100000226A /* RevenueCat */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 109711662DC68B100000226A /* XCRemoteSwiftPackageReference "purchases-ios-spm" */;

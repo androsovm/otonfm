@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Messages: read by any authenticated user, create with validation
+    match /messages/{messageId} {
+      allow read: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.type in ['userMessage', 'songRequest']
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 500;
+
+      allow update, delete: if false;
+    }
+
+    // Users: read/write own document only, cannot change isAdmin/isPremium
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      allow create: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.isAdmin == false
+        && request.resource.data.isPremium == false;
+
+      allow update: if request.auth != null
+        && request.auth.uid == userId
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isPremium']));
+
+      allow delete: if false;
+    }
+
+    // Admin status: read-only for authenticated users, write only via Console
+    match /admin_status/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+  }
+}
