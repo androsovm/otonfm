@@ -17,14 +17,16 @@ struct TrackInfoView: View {
                         .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
                         .transition(.blurReplace)
                 } else if isPlaying && !trackTitle.isEmpty {
-                    Text(trackTitle)
-                        .font(AppFonts.trackTitle)
-                        .foregroundColor(AppColors.textPrimary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
-                        .id(trackTitle)
-                        .transition(.blurReplace)
+                    TypewriterText(
+                        text: trackTitle,
+                        font: AppFonts.trackTitle,
+                        color: AppColors.textPrimary
+                    )
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
+                    .id(trackTitle)
+                    .transition(.blurReplace)
                 } else {
                     Text("OTON FM")
                         .font(AppFonts.trackTitle)
@@ -144,6 +146,54 @@ private struct MarqueeText: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             beginScrolling()
         }
+    }
+}
+
+// MARK: - Typewriter Text
+
+/// Reveals text character by character with a typewriter effect.
+private struct TypewriterText: View {
+    let text: String
+    let font: Font
+    let color: Color
+
+    @State private var visibleCount = 0
+    @State private var timer: Timer?
+
+    private let charDelay: TimeInterval = 0.04
+
+    var body: some View {
+        Text(text.prefix(visibleCount) + (visibleCount < text.count ? " " : ""))
+            .font(font)
+            .foregroundColor(color)
+            .onAppear { startTyping() }
+            .onDisappear { stopTimer() }
+            .onChange(of: text) { _, _ in restartTyping() }
+    }
+
+    private func startTyping() {
+        visibleCount = 0
+        stopTimer()
+        timer = Timer.scheduledTimer(withTimeInterval: charDelay, repeats: true) { t in
+            if visibleCount < text.count {
+                visibleCount += 1
+            } else {
+                t.invalidate()
+            }
+        }
+    }
+
+    private func restartTyping() {
+        stopTimer()
+        visibleCount = 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            startTyping()
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
     }
 }
 
