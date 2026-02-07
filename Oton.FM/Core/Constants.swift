@@ -44,8 +44,6 @@ enum Constants {
         static let backgroundTransition: TimeInterval = 0.8
         /// Play button press animation duration (seconds).
         static let pressAnimation: TimeInterval = 0.2
-        /// Artwork pulsation cycle period (seconds).
-        static let pulsationDuration: TimeInterval = 1.5
         /// AnimatedDots tick interval (seconds).
         static let dotsInterval: TimeInterval = 0.4
         /// Splash RadialGradient pulse period (seconds).
@@ -81,8 +79,6 @@ enum Constants {
         static let artworkShadowOpacity: Double = 0.6
         /// Artwork shadow vertical offset.
         static let artworkShadowOffsetY: CGFloat = 10
-        /// Artwork pulsation maximum scale.
-        static let pulsationScale: CGFloat = 1.02
         /// Play button press-down scale.
         static let pressScale: CGFloat = 0.9
         /// Logo size on splash screen.

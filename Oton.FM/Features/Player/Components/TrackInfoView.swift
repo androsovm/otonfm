@@ -13,30 +13,33 @@ struct TrackInfoView: View {
                 if isConnecting {
                     ConnectingText()
                         .lineLimit(2)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
+                        .transition(.blurReplace)
                 } else if isPlaying && !trackTitle.isEmpty {
-                    TypewriterText(
-                        text: trackTitle,
-                        font: AppFonts.trackTitle,
-                        color: AppColors.textPrimary
-                    )
-                    .id(trackTitle)
-                    .lineLimit(2)
-                    .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
-                    .transition(.opacity.combined(with: .move(edge: .bottom)))
+                    Text(trackTitle)
+                        .font(AppFonts.trackTitle)
+                        .foregroundColor(AppColors.textPrimary)
+                        .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
+                        .id(trackTitle)
+                        .transition(.blurReplace)
                 } else {
                     Text("OTON FM")
                         .font(AppFonts.trackTitle)
                         .foregroundColor(AppColors.textPrimary)
                         .lineLimit(2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .frame(height: Constants.Layout.trackInfoHeight, alignment: .leading)
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .transition(.blurReplace)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: Constants.Layout.trackInfoHeight)
             .animation(.easeInOut(duration: Constants.Animation.textTransition), value: isConnecting)
             .animation(.easeInOut(duration: Constants.Animation.textTransition), value: trackTitle)
             .animation(.easeInOut(duration: Constants.Animation.textTransition), value: isPlaying)
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             // Always reserve space for the next track line to prevent layout jumps
             MarqueeText(
@@ -44,9 +47,10 @@ struct TrackInfoView: View {
                 font: AppFonts.nextTrackSubtitle,
                 color: AppColors.textTertiary
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
             .opacity(nextTrackTitle.isEmpty ? 0 : 1)
+            .animation(.easeInOut(duration: Constants.Animation.textTransition), value: nextTrackTitle)
         }
-        .animation(.easeInOut(duration: Constants.Animation.textTransition), value: nextTrackTitle)
         .padding(.horizontal, UIScreen.main.bounds.width * Constants.Layout.horizontalPaddingRatio)
         .offset(y: Constants.Layout.trackInfoOffset)
     }
@@ -143,53 +147,3 @@ private struct MarqueeText: View {
     }
 }
 
-// MARK: - Typewriter Text
-
-/// Reveals text character by character with a typewriter effect.
-private struct TypewriterText: View {
-    let text: String
-    let font: Font
-    let color: Color
-
-    @State private var visibleCount: Int = 0
-    @State private var timer: Timer?
-
-    private let charDelay: TimeInterval = 0.04
-
-    var body: some View {
-        Text(text.prefix(visibleCount) + (visibleCount < text.count ? " " : ""))
-            .font(font)
-            .foregroundColor(color)
-            .onAppear {
-                startTyping()
-            }
-            .onDisappear {
-                timer?.invalidate()
-                timer = nil
-            }
-            .onChange(of: text) { _, _ in
-                restartTyping()
-            }
-    }
-
-    private func startTyping() {
-        visibleCount = 0
-        timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: charDelay, repeats: true) { t in
-            if visibleCount < text.count {
-                visibleCount += 1
-            } else {
-                t.invalidate()
-            }
-        }
-    }
-
-    private func restartTyping() {
-        timer?.invalidate()
-        timer = nil
-        visibleCount = 0
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            startTyping()
-        }
-    }
-}

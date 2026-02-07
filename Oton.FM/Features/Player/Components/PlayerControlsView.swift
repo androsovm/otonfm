@@ -7,7 +7,6 @@ struct PlayerControlsView: View {
     let onToggle: () -> Void
     let onTouchDown: () -> Void
     let onTouchUp: () -> Void
-    @Binding var pulsateAnimation: Bool
 
     @State private var isPressed = false
 

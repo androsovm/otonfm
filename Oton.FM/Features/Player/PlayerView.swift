@@ -7,7 +7,6 @@ struct PlayerView: View {
     @State private var subscriptionVM: SubscriptionViewModel
     @State private var gradientAnimator = GradientAnimator()
     @State private var motionManager = MotionManager()
-    @State private var pulsateAnimation = false
     @State private var isInterfaceVisible = false
 
     init(viewModel: PlayerViewModel) {
@@ -62,14 +61,10 @@ struct PlayerView: View {
             withAnimation {
                 isInterfaceVisible = true
             }
-            pulsateAnimation = viewModel.isPlaying
             if viewModel.isDefaultArtworkShown {
                 gradientAnimator.start()
             }
             subscriptionVM.checkAndShowPaywall()
-        }
-        .onChange(of: viewModel.isPlaying) { _, isPlaying in
-            pulsateAnimation = isPlaying
         }
         .onChange(of: viewModel.isDefaultArtworkShown) { _, isDefault in
             if isDefault {
@@ -96,12 +91,16 @@ struct PlayerView: View {
         } else {
             ZStack {
                 // Blurred artwork as background
-                Image(uiImage: viewModel.artworkImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .blur(radius: 60)
-                    .scaleEffect(1.3)
+                // Color.clear defines the layout size (= screen),
+                // Image renders as overlay without inflating the parent ZStack.
+                Color.clear
+                    .overlay(
+                        Image(uiImage: viewModel.artworkImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .blur(radius: 60)
+                            .scaleEffect(1.3)
+                    )
                     .clipped()
                     .id(viewModel.artworkId)
 
@@ -170,7 +169,6 @@ struct PlayerView: View {
                     artworkId: viewModel.artworkId,
                     isPlaying: viewModel.isPlaying,
                     isDefaultArtwork: viewModel.isDefaultArtworkShown,
-                    pulsateAnimation: $pulsateAnimation,
                     shadowColor: viewModel.artworkShadowColor,
                     motionManager: motionManager
                 )
@@ -191,8 +189,7 @@ struct PlayerView: View {
                         isBuffering: viewModel.isBuffering,
                         onToggle: viewModel.togglePlayback,
                         onTouchDown: viewModel.touchDown,
-                        onTouchUp: viewModel.touchUp,
-                        pulsateAnimation: $pulsateAnimation
+                        onTouchUp: viewModel.touchUp
                     )
                     .padding(.bottom, Constants.Layout.bottomSpacing)
                 }
